@@ -22,6 +22,26 @@ AI tools are very reliable at text extraction compared to typically-used tools s
 - Supports common image formats (PNG, JPG, WEBM, etc.)
 - Simple and easy-to-use command
 
+## Installation
+
+### Recommended Installation
+
+Follow the steps below to install AI Image OCR.
+
+1. Search for "AI Image OCR" in Obsidian's community plugins browser
+2. Enable the plugin in your Obsidian settings (find "AI Image OCR" under "Community plugins").
+3. Add your OpenAI API key in the settings.
+
+### Manual Installation
+
+Clone this repository to your vault plugins directory (`<vault-name>/.obsidian/plugins/`)
+
+```sh
+git clone https://github.com/rootiest/obsidian-ai-image-ocr.git
+```
+
+Or download the [plugin archive](https://github.com/rootiest/obsidian-ai-image-ocr/archive/refs/heads/main.zip) and extract to your plugins directory.
+
 ## Configuration
 
 Enter or paste your [OpenAI API Key](https://platform.openai.com/api-keys) into the API key settings field.
