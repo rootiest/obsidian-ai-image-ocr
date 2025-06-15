@@ -14,7 +14,7 @@ This is simple plugin for extremely accurate and reliable text and handwriting r
 AI tools are very reliable at text extraction compared to typically-used tools such as tesseract.
 
 > [!NOTE]
-> At this time GPT-4o is the only supported model, but expanded support is planned.
+> At this time GPT-4o is the only supported model.
 
 ## Features
 
@@ -23,16 +23,6 @@ AI tools are very reliable at text extraction compared to typically-used tools s
 - Simple and easy-to-use command
 
 ## Installation
-
-### Recommended Installation
-
-Follow the steps below to install AI Image OCR.
-
-1. Search for "AI Image OCR" in Obsidian's community plugins browser
-2. Enable the plugin in your Obsidian settings (find "AI Image OCR" under "Community plugins").
-3. Add your OpenAI API key in the settings.
-
-### Manual Installation
 
 Clone this repository to your vault plugins directory (`<vault-name>/.obsidian/plugins/`)
 
@@ -61,20 +51,6 @@ Enter or paste your [OpenAI API Key](https://platform.openai.com/api-keys) into 
 
 - API key: The OpenAI API key to use for authentication with the service  
   This cannot be a "project" key (`sk-proj`). A user or service account key is required.
-
-## Planned Features
-
-- Detect pasted images and extract text automatically (with toggle in settings)
-- Extract text from images in vault or image embeds
-- Behavior options:
-  - Copy text to clipboard instead of inserting in note
-  - Create new note from extracted text
-  - etc
-- Notification options:
-  - Silent mode
-  - Verbose mode
-- Better handling of invalid API keys or other errors (out of credits, etc)
-- Support other AI models/providers
 
 ## License
 
