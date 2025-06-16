@@ -35,6 +35,8 @@ compared to typically-used tools such as tesseract.
 - Supports common image formats (PNG, JPG, WEBM, etc.)
 - Simple and easy-to-use command
 - Returned text will be in markdown format
+- Select an image via your OS-native file picker
+- Use embedded images as the source
 
 ## Installation
 
@@ -73,11 +75,31 @@ and extract to your plugins directory.
 
 ## Usage
 
+### Open An Image For Extraction
+
 1. Use the command palette (`Ctrl+P`) and search for "Extract Text from Image".
 2. Select the source image from the image selection window.
 3. The image data will be transmitted to the AI model for text extraction.
 4. The text from your image will be
    inserted into the current note at the cursor.
+
+### Extract Text From An Embedded Image
+
+1. Place your cursor in the note where you
+   want to insert the extracted text.
+2. If the image embed is not selected,
+   the plugin will find the nearest image embed above the cursor.
+3. Use the command palette (`Ctrl+P`) and
+   search for "Extract Text from Embedded Image".
+4. The text from the embedded image will be
+   inserted into the current note at the cursor
+   (replacing any selected text)
+
+> ![TIP]
+> You can select an image embed in your note to use it as the source
+> and replace it with the extracted text.
+
+> ![CAUTION] **All** selected text will be replaced with the extracted text.
 
 ## Requirements
 
@@ -90,6 +112,14 @@ and extract to your plugins directory.
 > The API key to use for authentication with the service.  
 > This cannot be a "project" key (`sk-proj`).  
 > A user or service account key is required.
+
+> ![WARNING]
+> CORS security restrictions may prevent the plugin
+> from collecting externally linked images.  
+> A CORS proxy is used as a fallback to collect external images
+> when direct access fails.
+> If an image is still not accessible,
+> you may need to download it manually before extracting text.
 
 ## License
 
