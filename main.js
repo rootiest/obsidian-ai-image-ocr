@@ -157,6 +157,62 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
         }
       }
     });
+    this.addCommand({
+      id: "extract-text-from-embedded-image",
+      name: "Extract Text from Embedded Image",
+      editorCallback: async (editor, view) => {
+        const embed = findRelevantImageEmbed(editor);
+        if (!embed) {
+          new import_obsidian.Notice("No image embed found.");
+          return;
+        }
+        const { link, isExternal } = embed;
+        let arrayBuffer = null;
+        if (isExternal) {
+          try {
+            arrayBuffer = await fetchExternalImageAsArrayBuffer(link);
+          } catch (e) {
+            new import_obsidian.Notice("Failed to fetch external image.");
+            return;
+          }
+        } else {
+          let file = this.app.vault.getAbstractFileByPath(link);
+          if (!(file instanceof import_obsidian.TFile)) {
+            const files = this.app.vault.getFiles();
+            file = files.find((f) => f.name === link);
+          }
+          if (file instanceof import_obsidian.TFile) {
+            arrayBuffer = await this.app.vault.readBinary(file);
+          } else {
+            new import_obsidian.Notice("Image file not found in vault.");
+            return;
+          }
+        }
+        if (!arrayBuffer) {
+          new import_obsidian.Notice("Could not read image data.");
+          return;
+        }
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        const provider = this.getProvider();
+        const notice = new import_obsidian.Notice(
+          `Extracting from embed with ${provider.name}\u2026`,
+          0
+        );
+        try {
+          const content = await provider.extractTextFromBase64(base64);
+          notice.hide();
+          if (content) {
+            editor.replaceSelection(content);
+          } else {
+            new import_obsidian.Notice("No content returned.");
+          }
+        } catch (e) {
+          notice.hide();
+          console.error("OCR failed:", e);
+          new import_obsidian.Notice("Failed to extract text.");
+        }
+      }
+    });
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
   }
   getProvider() {
@@ -209,6 +265,61 @@ var GPTImageOCRSettingTab = class extends import_obsidian.PluginSettingTab {
     }
   }
 };
+function findRelevantImageEmbed(editor) {
+  const sel = editor.getSelection();
+  let match = sel.match(/!\[\[(.+?)\]\]/);
+  if (match) {
+    const link = match[1].split("|")[0].trim();
+    return { link, isExternal: false, embedType: "internal" };
+  }
+  match = sel.match(/!\[.*?\]\((.+?)\)/);
+  if (match) {
+    const link = match[1].split(" ")[0].replace(/["']/g, "");
+    return {
+      link,
+      isExternal: /^https?:\/\//i.test(link),
+      embedType: "external"
+    };
+  }
+  for (let i = editor.getCursor().line; i >= 0; i--) {
+    const line = editor.getLine(i);
+    let embedMatch = line.match(/!\[\[(.+?)\]\]/);
+    if (embedMatch) {
+      const link = embedMatch[1].split("|")[0].trim();
+      return { link, isExternal: false, embedType: "internal" };
+    }
+    embedMatch = line.match(/!\[.*?\]\((.+?)\)/);
+    if (embedMatch) {
+      const link = embedMatch[1].split(" ")[0].replace(/["']/g, "");
+      return {
+        link,
+        isExternal: /^https?:\/\//i.test(link),
+        embedType: "external"
+      };
+    }
+  }
+  return null;
+}
+async function fetchExternalImageAsArrayBuffer(url) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.arrayBuffer();
+  } catch (e) {
+    new import_obsidian.Notice("Direct image fetch blocked by CORS, trying proxy\u2026");
+    try {
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const resp = await fetch(proxyUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
+      return await resp.arrayBuffer();
+    } catch (e2) {
+      new import_obsidian.Notice(
+        "Failed to fetch image.\nIf you can see the image in preview, right-click and 'Save image to vault',\nthen run OCR on the saved copy."
+      );
+      return null;
+    }
+  }
+}
 function arrayBufferToBase64(buffer) {
   const binary = new Uint8Array(buffer).reduce(
     (acc, byte) => acc + String.fromCharCode(byte),
