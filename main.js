@@ -26,7 +26,96 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
-  apiKey: ""
+  provider: "openai",
+  openaiApiKey: "",
+  geminiApiKey: ""
+};
+var OpenAIProvider = class {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    __publicField(this, "id", "openai");
+    __publicField(this, "name", "OpenAI GPT-4o");
+  }
+  async extractTextFromBase64(image) {
+    const payload = {
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${image}` }
+            },
+            {
+              type: "text",
+              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format."
+            }
+          ]
+        }
+      ],
+      max_tokens: 1024
+    };
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  }
+};
+var GeminiProvider = class {
+  constructor(apiKey) {
+    this.apiKey = apiKey;
+    __publicField(this, "id", "gemini");
+    __publicField(this, "name", "Google Gemini 1.5 Flash");
+  }
+  async extractTextFromBase64(image) {
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inline_data: {
+                mime_type: "image/jpeg",
+                // update dynamically if desired
+                data: image
+              }
+            },
+            {
+              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format."
+            }
+          ]
+        }
+      ]
+    };
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+      const data = await response.json();
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text.trim();
+      }
+      console.warn("Gemini response did not contain expected text:", data);
+      return null;
+    } catch (err) {
+      console.error("Gemini fetch error:", err);
+      return null;
+    }
+  }
 };
 var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
   constructor() {
@@ -46,63 +135,36 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
         }
         const arrayBuffer = await file.arrayBuffer();
         const base64 = arrayBufferToBase64(arrayBuffer);
-        const content = await this.sendImageToOpenAI(base64);
-        if (content) {
-          const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-          if (view) {
-            view.editor.replaceSelection(content);
+        const provider = this.getProvider();
+        const notice = new import_obsidian.Notice(`Using ${provider.name}\u2026`, 0);
+        try {
+          const content = await provider.extractTextFromBase64(base64);
+          notice.hide();
+          if (content) {
+            const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+            if (view) {
+              view.editor.replaceSelection(content);
+            } else {
+              new import_obsidian.Notice("No active editor found.");
+            }
           } else {
-            new import_obsidian.Notice("No active editor found.");
+            new import_obsidian.Notice("No content returned.");
           }
+        } catch (e) {
+          notice.hide();
+          console.error("OCR failed:", e);
+          new import_obsidian.Notice("Failed to extract text.");
         }
       }
     });
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
   }
-  async sendImageToOpenAI(base64Image) {
-    if (!this.settings.apiKey) {
-      new import_obsidian.Notice("API key not set. Please configure it in settings.");
-      return null;
-    }
-    const payload = {
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            },
-            {
-              type: "text",
-              text: "Please extract all text you can from this image."
-            }
-          ]
-        }
-      ],
-      max_tokens: 1024
-    };
-    const notice = new import_obsidian.Notice("Extracting text from image\u2026", 0);
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.settings.apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      notice.hide();
-      return data.choices?.[0]?.message?.content?.trim() ?? null;
-    } catch (e) {
-      notice.hide();
-      console.error("GPT OCR failed:", e);
-      new import_obsidian.Notice("Failed to extract text.");
-      return null;
+  getProvider() {
+    const { provider, openaiApiKey, geminiApiKey } = this.settings;
+    if (provider === "gemini") {
+      return new GeminiProvider(geminiApiKey);
+    } else {
+      return new OpenAIProvider(openaiApiKey);
     }
   }
   async loadSettings() {
@@ -121,15 +183,37 @@ var GPTImageOCRSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "GPT Image OCR Settings" });
-    new import_obsidian.Setting(containerEl).setName("OpenAI API Key").setDesc("Paste your OpenAI API key here.").addText((text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
-      this.plugin.settings.apiKey = value.trim();
-      await this.plugin.saveSettings();
-    }));
+    containerEl.createEl("h2", { text: "OCR Plugin Settings" });
+    new import_obsidian.Setting(containerEl).setName("Provider").setDesc("Choose which OCR provider to use.").addDropdown(
+      (dropdown) => dropdown.addOption("openai", "OpenAI GPT-4o").addOption("gemini", "Google Gemini 1.5 Flash").setValue(this.plugin.settings.provider).onChange(async (value) => {
+        this.plugin.settings.provider = value;
+        await this.plugin.saveSettings();
+        this.display();
+      })
+    );
+    if (this.plugin.settings.provider === "openai") {
+      new import_obsidian.Setting(containerEl).setName("OpenAI API Key").setDesc("Your OpenAI API key").addText(
+        (text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiApiKey).onChange(async (value) => {
+          this.plugin.settings.openaiApiKey = value.trim();
+          await this.plugin.saveSettings();
+        })
+      );
+    }
+    if (this.plugin.settings.provider === "gemini") {
+      new import_obsidian.Setting(containerEl).setName("Gemini API Key").setDesc("Your Google Gemini API key").addText(
+        (text) => text.setPlaceholder("AIza...").setValue(this.plugin.settings.geminiApiKey).onChange(async (value) => {
+          this.plugin.settings.geminiApiKey = value.trim();
+          await this.plugin.saveSettings();
+        })
+      );
+    }
   }
 };
 function arrayBufferToBase64(buffer) {
-  const binary = new Uint8Array(buffer).reduce((acc, byte) => acc + String.fromCharCode(byte), "");
+  const binary = new Uint8Array(buffer).reduce(
+    (acc, byte) => acc + String.fromCharCode(byte),
+    ""
+  );
   return btoa(binary);
 }
 async function selectImageFile() {
