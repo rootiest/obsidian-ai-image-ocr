@@ -95,31 +95,33 @@ and extract to your plugins directory.
    inserted into the current note at the cursor
    (replacing any selected text)
 
-> ![TIP]
+## Notes
+
+> [!TIP]
 > You can select an image embed in your note to use it as the source
 > and replace it with the extracted text.
 
-> ![CAUTION] **All** selected text will be replaced with the extracted text.
+> [!CAUTION]  
+> **All** selected text will be replaced with the extracted text.
 
-## Requirements
-
-- Internet connection
-- An OpenAI or Google Gemini API key
-
-## Notes
-
-> ![NOTE] When using OpenAI:  
+> [!NOTE]
+> When using OpenAI:  
 > The API key to use for authentication with the service.  
 > This cannot be a "project" key (`sk-proj`).  
 > A user or service account key is required.
 
-> ![WARNING]
+> [!WARNING]
 > CORS security restrictions may prevent the plugin
 > from collecting externally linked images.  
 > A CORS proxy is used as a fallback to collect external images
 > when direct access fails.
 > If an image is still not accessible,
 > you may need to download it manually before extracting text.
+
+## Requirements
+
+- Internet connection
+- An OpenAI or Google Gemini API key
 
 ## License
 
