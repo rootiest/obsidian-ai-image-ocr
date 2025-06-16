@@ -49,7 +49,7 @@ var OpenAIProvider = class {
             },
             {
               type: "text",
-              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format."
+              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text."
             }
           ]
         }
@@ -88,7 +88,7 @@ var GeminiProvider = class {
               }
             },
             {
-              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format."
+              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text."
             }
           ]
         }
