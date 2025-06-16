@@ -306,13 +306,14 @@ async function fetchExternalImageAsArrayBuffer(url) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     return await resp.arrayBuffer();
   } catch (e) {
-    new import_obsidian.Notice("Direct image fetch blocked by CORS, trying proxy\u2026");
+    console.warn("Direct image fetch blocked by CORS, trying proxy\u2026");
     try {
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
       const resp = await fetch(proxyUrl);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
       return await resp.arrayBuffer();
     } catch (e2) {
+      console.error("Failed to fetch image.");
       new import_obsidian.Notice(
         "Failed to fetch image.\nIf you can see the image in preview, right-click and 'Save image to vault',\nthen run OCR on the saved copy."
       );
