@@ -37,7 +37,7 @@ jobs:
           VERSION="${GITHUB_REF##*/}"
           VERSION="${VERSION#v}"
           echo "Setting version to $VERSION"
-          npm version "$VERSION" --no-git-tag-versiona
+          npm version "$VERSION" --no-git-tag-version || echo "Version not changed, continuing…"
           jq --arg v "$VERSION" '.version = $v' manifest.json > tmp && mv tmp manifest.json
 
       - name: Use Node.js
