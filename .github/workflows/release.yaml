@@ -51,13 +51,13 @@ jobs:
       - name: Build Plugin
         run: npm run build
 
-      # - name: Commit version bump
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"
-      #     git add manifest.json package.json
-      #     git commit -m "chore: bump version to $VERSION"
-      #     git push
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json package.json
+          git commit -m "chore: bump version to $VERSION"
+          git push
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
