@@ -1,7 +1,7 @@
 {
   "id": "ai-image-ocr",
   "name": "AI Image OCR",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "minAppVersion": "0.15.0",
   "description": "Extracts text from images using AI Vision models.",
   "author": "Rootiest",

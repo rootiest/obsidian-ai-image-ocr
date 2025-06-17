@@ -28,7 +28,12 @@ var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
   provider: "openai",
   openaiApiKey: "",
-  geminiApiKey: ""
+  geminiApiKey: "",
+  outputToNewNote: false,
+  noteFolderPath: "",
+  noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
+  appendIfExists: false,
+  headerTemplate: ""
 };
 var OpenAIProvider = class {
   constructor(apiKey) {
@@ -141,12 +146,7 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
           const content = await provider.extractTextFromBase64(base64);
           notice.hide();
           if (content) {
-            const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-            if (view) {
-              view.editor.replaceSelection(content);
-            } else {
-              new import_obsidian.Notice("No active editor found.");
-            }
+            await handleExtractedContent(this, content, editor ?? null);
           } else {
             new import_obsidian.Notice("No content returned.");
           }
@@ -160,8 +160,12 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
     this.addCommand({
       id: "extract-text-from-embedded-image",
       name: "Extract Text from Embedded Image",
-      editorCallback: async (editor, view) => {
-        const embed = findRelevantImageEmbed(editor);
+      // ✅ Update extract-text-from-embedded-image command
+      // Inside editorCallback:
+      editorCallback: async (editor2, view) => {
+        const sel = editor2.getSelection();
+        const embedMatch = sel.match(/!\[\[.*?\]\]/) || sel.match(/!\[.*?\]\(.*?\)/);
+        const embed = findRelevantImageEmbed(editor2);
         if (!embed) {
           new import_obsidian.Notice("No image embed found.");
           return;
@@ -176,11 +180,7 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
             return;
           }
         } else {
-          let file = this.app.vault.getAbstractFileByPath(link);
-          if (!(file instanceof import_obsidian.TFile)) {
-            const files = this.app.vault.getFiles();
-            file = files.find((f) => f.name === link);
-          }
+          const file = resolveInternalImagePath(this.app, link);
           if (file instanceof import_obsidian.TFile) {
             arrayBuffer = await this.app.vault.readBinary(file);
           } else {
@@ -201,11 +201,15 @@ var GPTImageOCRPlugin = class extends import_obsidian.Plugin {
         try {
           const content = await provider.extractTextFromBase64(base64);
           notice.hide();
-          if (content) {
-            editor.replaceSelection(content);
-          } else {
+          if (!content) {
             new import_obsidian.Notice("No content returned.");
+            return;
           }
+          if (embedMatch && sel === embedMatch[0]) {
+            editor2.replaceSelection(content);
+            return;
+          }
+          await handleExtractedContent(this, content, editor2 ?? null);
         } catch (e) {
           notice.hide();
           console.error("OCR failed:", e);
@@ -263,10 +267,123 @@ var GPTImageOCRSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     }
+    new import_obsidian.Setting(containerEl).setName("Header template").setDesc(
+      "Optional markdown placed above the extracted text. Supports {{moment.js}} formatting."
+    ).addTextArea(
+      (text) => text.setPlaceholder("### Extracted at {{YYYY-MM-DD HH:mm:ss}}\\n---").setValue(this.plugin.settings.headerTemplate).onChange(async (value) => {
+        this.plugin.settings.headerTemplate = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Output to new note").setDesc("If enabled, extracted text will be saved to a new note.").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.outputToNewNote).onChange(async (value) => {
+        this.plugin.settings.outputToNewNote = value;
+        await this.plugin.saveSettings();
+        this.display();
+      })
+    );
+    if (this.plugin.settings.outputToNewNote) {
+      new import_obsidian.Setting(containerEl).setName("Note folder path").setDesc("Relative to vault root (e.g., 'OCR Notes')").addText(
+        (text) => text.setPlaceholder("OCR Notes").setValue(this.plugin.settings.noteFolderPath).onChange(async (value) => {
+          this.plugin.settings.noteFolderPath = value.trim();
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian.Setting(containerEl).setName("Note name template").setDesc("Supports {{moment.js}} date formatting.").addText(
+        (text) => text.setPlaceholder("Extracted OCR {{YYYY-MM-DD}}").setValue(this.plugin.settings.noteNameTemplate).onChange(async (value) => {
+          this.plugin.settings.noteNameTemplate = value;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian.Setting(containerEl).setName("Append if file exists").setDesc(
+        "If enabled, appends to an existing note instead of creating a new one."
+      ).addToggle(
+        (toggle) => toggle.setValue(this.plugin.settings.appendIfExists).onChange(async (value) => {
+          this.plugin.settings.appendIfExists = value;
+          await this.plugin.saveSettings();
+        })
+      );
+    }
+    containerEl.createEl("hr");
+    containerEl.createEl("div", {
+      cls: "setting-item-description"
+    }).innerHTML = `
+    <strong>Tip:</strong> When you select the text of an image embed in the editor for extraction
+    (e.g. <code>![[image.png]]</code>)<br> the extracted text will
+    <em>replace the embed directly</em> \u2014 ignoring the output-to-note
+    and header template settings above.
+    `;
   }
 };
-function findRelevantImageEmbed(editor) {
-  const sel = editor.getSelection();
+async function handleExtractedContent(plugin, content, editor2) {
+  const moment = window.moment;
+  let header = plugin.settings.headerTemplate || "";
+  if (header.trim()) {
+    header = header.replace(
+      /{{(.*?)}}/g,
+      (_, fmt) => moment().format(fmt.trim())
+    );
+    content = header + "\n\n" + content;
+  }
+  if (!plugin.settings.outputToNewNote) {
+    if (editor2) {
+      editor2.replaceSelection(content);
+    } else {
+      new import_obsidian.Notice("No active editor to paste into.");
+    }
+    return;
+  }
+  const name = plugin.settings.noteNameTemplate.replace(
+    /{{(.*?)}}/g,
+    (_, fmt) => moment().format(fmt.trim())
+  );
+  const folder = plugin.settings.noteFolderPath.trim();
+  const path = folder ? `${folder}/${name}.md` : `${name}.md`;
+  if (folder) {
+    const folderExists = plugin.app.vault.getAbstractFileByPath(folder);
+    if (!folderExists) {
+      try {
+        await plugin.app.vault.createFolder(folder);
+      } catch (err) {
+        new import_obsidian.Notice(`Failed to create folder "${folder}".`);
+        console.error(err);
+        return;
+      }
+    }
+  }
+  let file = plugin.app.vault.getAbstractFileByPath(path);
+  if (file instanceof import_obsidian.TFile) {
+    if (plugin.settings.appendIfExists) {
+      const existing = await plugin.app.vault.read(file);
+      await plugin.app.vault.modify(file, existing + "\n\n" + content);
+      await plugin.app.workspace.getLeaf(true).openFile(file);
+      return;
+    } else {
+      let base = name;
+      let ext = ".md";
+      let counter = 1;
+      let uniqueName = `${base}${ext}`;
+      let uniquePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+      while (plugin.app.vault.getAbstractFileByPath(uniquePath)) {
+        uniqueName = `${base} ${counter}${ext}`;
+        uniquePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+        counter++;
+      }
+      file = await plugin.app.vault.create(uniquePath, content);
+    }
+  } else {
+    try {
+      file = await plugin.app.vault.create(path, content);
+    } catch (err) {
+      new import_obsidian.Notice(`Failed to create note at "${path}".`);
+      console.error(err);
+      return;
+    }
+  }
+  await plugin.app.workspace.getLeaf(true).openFile(file);
+}
+function findRelevantImageEmbed(editor2) {
+  const sel = editor2.getSelection();
   let match = sel.match(/!\[\[(.+?)\]\]/);
   if (match) {
     const link = match[1].split("|")[0].trim();
@@ -281,8 +398,8 @@ function findRelevantImageEmbed(editor) {
       embedType: "external"
     };
   }
-  for (let i = editor.getCursor().line; i >= 0; i--) {
-    const line = editor.getLine(i);
+  for (let i = editor2.getCursor().line; i >= 0; i--) {
+    const line = editor2.getLine(i);
     let embedMatch = line.match(/!\[\[(.+?)\]\]/);
     if (embedMatch) {
       const link = embedMatch[1].split("|")[0].trim();
@@ -299,6 +416,11 @@ function findRelevantImageEmbed(editor) {
     }
   }
   return null;
+}
+function resolveInternalImagePath(app, link) {
+  let file = app.vault.getAbstractFileByPath(link);
+  if (file instanceof import_obsidian.TFile) return file;
+  return app.vault.getFiles().find((f) => f.name === link) || null;
 }
 async function fetchExternalImageAsArrayBuffer(url) {
   try {
