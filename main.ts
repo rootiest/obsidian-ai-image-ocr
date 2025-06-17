@@ -96,7 +96,7 @@ class GeminiProvider implements OCRProvider {
   id = "gemini";
   name = "Google Gemini 1.5 Flash";
 
-  constructor(private apiKey: string) {}
+  constructor(private apiKey: string) { }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
     const payload = {
@@ -578,7 +578,7 @@ async function fetchExternalImageAsArrayBuffer(
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     return await resp.arrayBuffer();
   } catch (e) {
-    console.warn("Direct image fetch blocked by CORS, trying proxy…");
+    // console.warn("Direct image fetch blocked by CORS, trying proxy…");
     // 2. Try CORS proxy fallback
     try {
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
@@ -590,8 +590,8 @@ async function fetchExternalImageAsArrayBuffer(
       console.error("Failed to fetch image.");
       new Notice(
         "Failed to fetch image.\n" +
-          "If you can see the image in preview, right-click and 'Save image to vault',\n" +
-          "then run OCR on the saved copy.",
+        "If you can see the image in preview, right-click and 'Save image to vault',\n" +
+        "then run OCR on the saved copy.",
       );
       return null;
     }
