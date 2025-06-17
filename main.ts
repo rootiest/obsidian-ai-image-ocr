@@ -65,17 +65,30 @@ class OpenAIProvider implements OCRProvider {
       max_tokens: 1024,
     };
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() ?? null;
+      const data = await response.json();
+
+      const content = data.choices?.[0]?.message?.content?.trim();
+
+      if (content) {
+        return content;
+      }
+
+      console.warn("OpenAI response did not contain expected text:", data);
+      return null;
+    } catch (err) {
+      console.error("OpenAI fetch error:", err);
+      return null;
+    }
   }
 }
 
