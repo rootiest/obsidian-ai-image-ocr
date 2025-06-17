@@ -30,6 +30,20 @@ jobs:
       - name: Build Plugin
         run: npm run build
 
+      - name: Validate Tag Format
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          if [[ "$TAG" == v* ]]; then
+            echo "::warning::Tag '$TAG' should not start with 'v'!"
+            exit 1
+          fi
+
+      - name: Set Version from Tag
+        run: |
+          VERSION="${GITHUB_REF##*/}"
+          VERSION="${VERSION#v}"  # Strip leading 'v' if present
+          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp.json && mv manifest.tmp.json manifest.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
