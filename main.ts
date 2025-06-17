@@ -42,7 +42,7 @@ class OpenAIProvider implements OCRProvider {
   id = "openai";
   name = "OpenAI GPT-4o";
 
-  constructor(private apiKey: string) {}
+  constructor(private apiKey: string) { }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
     const payload = {
