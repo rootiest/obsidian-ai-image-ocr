@@ -1,0 +1,16 @@
+{
+  "name": "obsidian-gpt-image-ocr",
+  "version": "0.3.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "build": "esbuild main.ts --bundle --outfile=main.js --target=es2020 --format=cjs --external:obsidian"
+  },
+  "keywords": [],
+  "author": "Rootiest",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "esbuild": "^0.25.5"
+  }
+}
