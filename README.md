@@ -18,25 +18,34 @@ compared to typically-used tools such as tesseract.
 
 ## Supported Models
 
-- OpenAI GPT-4o: A powerful model for text extraction.
+### OpenAI GPT-4o
 
-  - Not free, but very inexpensive. See: [Pricing](https://platform.openai.com/docs/pricing)
-  - Requires [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
-  - See [Notes](#notes) for OpenAI API key requirements.
+- A powerful model for text extraction
+- Not free, but very inexpensive. See: [Pricing](https://platform.openai.com/docs/pricing)
+- Requires [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
+- See [Notes](#notes) for OpenAI API key requirements.
 
-- Google Gemini Flash 1.5: A fast and efficient model for text extraction.
+### Google Gemini Flash 1.5
 
-  - Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits)
-  - Requires [Google API key](https://aistudio.google.com/apikey)
+- A fast and efficient model for text extraction
+- Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+- Requires [Google API key](https://aistudio.google.com/apikey)
 
 ## Features
 
 - Extract text from images directly into your Obsidian notes
+- Supports [multiple AI models](#supported-models) for text extraction
 - Supports common image formats (PNG, JPG, WEBM, etc.)
-- Simple and easy-to-use command
+- Simple and easy-to-use commands
 - Returned text will be in markdown format
 - Select an image via your OS-native file picker
 - Use embedded images as the source
+- Choose to output extracted text to a new note or append to an existing note
+- [Customizable](#configuration) header template for extracted text
+- Supports [moment.js](https://momentjs.com/docs/#/displaying/format/) date
+  formatting in header template and filename template
+- Replaces [selected image embeds](#notes) directly with extracted text
+- Image embeds that are not selected will remain intact
 
 ## Installation
 
@@ -66,12 +75,36 @@ and extract to your plugins directory.
 
 ## Configuration
 
-1. Select your preferred model in the plugin settings via the `Provider` field.
-   See [Supported Models](#supported-models) for more information on available models.
+**These settings are required:**
 
-2. Enter the API key for the selected model in the `API Key` field.
-   - For OpenAI, this is your OpenAI API key.
-   - For Google Gemini, this is your Google API key.
+- Select your preferred model in the plugin settings via the `Provider` field.
+  See [Supported Models](#supported-models) for more information on available models.
+
+- Enter your API key for the selected model in the `API Key` field.
+
+**The remaining settings are all optional:**
+
+- Configure a `Header Template`  
+  This is a block of markdown text
+  that will be inserted before the extracted text.  
+  This can be used to add a title, date, or other information.  
+   [moment.js](https://momentjs.com/docs/#/displaying/format/) formatting
+  of dates and times is supported, e.g. `{{YYYY-MM-DD HH:mm:ss}}`.
+
+- Choose to output the extracted text to another note.  
+   This can be useful for keeping your extracted text organized into
+  individual notes.
+
+- If you choose to output to another note, you can configure the
+  folder path where the note will be created.
+
+- You can also specify a filename template for the created note,
+  which will support the same
+  [moment.js](https://momentjs.com/docs/#/displaying/format/) formatting
+  mentioned above.
+
+- Finally, you can choose whether to append the extracted text to the note if
+  it already exists or create a new note with an incremented filename.
 
 ## Usage
 
@@ -81,7 +114,7 @@ and extract to your plugins directory.
 2. Select the source image from the image selection window.
 3. The image data will be transmitted to the AI model for text extraction.
 4. The text from your image will be
-   inserted into the current note at the cursor.
+   inserted according to your settings configuration.
 
 ### Extract Text From An Embedded Image
 
@@ -92,23 +125,25 @@ and extract to your plugins directory.
 3. Use the command palette (`Ctrl+P`) and
    search for "Extract Text from Embedded Image".
 4. The text from the embedded image will be
-   inserted into the current note at the cursor
-   (replacing any selected text)
+   inserted according to your settings configuration.
 
 ## Notes
 
+---
+
 > [!TIP]
 > You can select an image embed in your note to use it as the source
-> and replace it with the extracted text.
+> _and_ replace it with the extracted text.
 
-> [!CAUTION]  
-> **All** selected text will be replaced with the extracted text.
+---
 
 > [!NOTE]
 > When using OpenAI:  
 > The API key to use for authentication with the service.  
 > This cannot be a "project" key (`sk-proj`).  
 > A user or service account key is required.
+
+---
 
 > [!WARNING]
 > CORS security restrictions may prevent the plugin
@@ -117,6 +152,8 @@ and extract to your plugins directory.
 > when direct access fails.
 > If an image is still not accessible,
 > you may need to download it manually before extracting text.
+
+---
 
 ## Requirements
 
