@@ -19,17 +19,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Plugin
-        run: npm run build
-
       - name: Validate Tag Format
         run: |
           TAG="${GITHUB_REF##*/}"
@@ -41,8 +30,29 @@ jobs:
       - name: Set Version from Tag
         run: |
           VERSION="${GITHUB_REF##*/}"
-          VERSION="${VERSION#v}"  # Strip leading 'v' if present
-          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp.json && mv manifest.tmp.json manifest.json
+          VERSION="${VERSION#v}"
+          echo "Setting version to $VERSION"
+          npm version "$VERSION" --no-git-tag-versiona
+          jq --arg v "$VERSION" '.version = $v' manifest.json > tmp && mv tmp manifest.json
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Plugin
+        run: npm run build
+
+      # - name: Commit version bump
+      #   run: |
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     git add manifest.json package.json
+      #     git commit -m "chore: bump version to $VERSION"
+      #     git push
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
