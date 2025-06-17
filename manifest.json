@@ -1,9 +1,9 @@
 {
   "id": "ai-image-ocr",
   "name": "AI Image OCR",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "minAppVersion": "0.15.0",
-  "description": "Extracts text from images using AI Vision models.",
+  "description": "Extracts text from images using AI Vision models",
   "author": "Rootiest",
   "authorUrl": "https://github.com/rootiest",
   "main": "main.js"
