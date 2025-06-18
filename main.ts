@@ -581,7 +581,7 @@ async function fetchExternalImageAsArrayBuffer(
     // console.warn("Direct image fetch blocked by CORS, trying proxy…");
     // 2. Try CORS proxy fallback
     try {
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const proxyUrl = `https://corsproxy.rootiest.com/proxy?url=${encodeURIComponent(url)}`;
       const resp = await fetch(proxyUrl);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
       return await resp.arrayBuffer();
