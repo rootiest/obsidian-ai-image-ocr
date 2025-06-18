@@ -1,2 +1,25 @@
-/* Not needed for now, but a placeholder if you want buttons or UI later */
+/* Style for the custom tip section in the plugin settings */
+.ai-image-ocr__tip {
+  margin-top: 1em;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.ai-image-ocr__tip strong {
+  display: block;
+  margin-bottom: 0.3em;
+}
+
+.ai-image-ocr__tip code {
+  background-color: var(--code-background);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: var(--font-monospace);
+}
+
+.ai-image-ocr__tip em {
+  font-style: italic;
+  color: var(--text-accent);
+}
+
 

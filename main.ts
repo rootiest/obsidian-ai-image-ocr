@@ -406,14 +406,18 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
     containerEl.createEl("hr");
 
-    containerEl.createEl("div", {
-      cls: "setting-item-description",
-    }).innerHTML = `
-    <strong>Tip:</strong> When you select the text of an image embed in the editor for extraction
-    (e.g. <code>![[image.png]]</code>)<br> the extracted text will
-    <em>replace the embed directly</em> — ignoring the output-to-note
-    and header template settings above.
-    `;
+    const descEl = containerEl.createEl("div", {
+      cls: 'ai-image-ocr__tip',
+    });
+
+    // Build content safely
+    descEl.createEl("strong", { text: "Tip:" });
+    descEl.appendText(" When you select the text of an image embed in the editor for extraction ");
+    descEl.createEl("code", { text: "![[image.png]]" });
+    descEl.appendText(", the extracted text will ");
+    descEl.createEl("em", { text: "replace the embed directly" });
+    descEl.appendText(" — ignoring the output-to-note and header template settings above.");
+
 
 
 
