@@ -7,6 +7,7 @@ import {
   TFile,
   MarkdownView,
   Editor,
+  requestUrl,
 } from "obsidian";
 
 interface GPTImageOCRSettings {
@@ -66,7 +67,8 @@ class OpenAIProvider implements OCRProvider {
     };
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await requestUrl({
+        url: "https://api.openai.com/v1/chat/completions",
         method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
@@ -75,7 +77,7 @@ class OpenAIProvider implements OCRProvider {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data = parseJsonResponse(response, d => Array.isArray(d.choices));
 
       const content = data.choices?.[0]?.message?.content?.trim();
 
@@ -119,18 +121,16 @@ class GeminiProvider implements OCRProvider {
     };
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+      const response = await requestUrl({
+        url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(payload),
+      });
 
-      const data = await response.json();
+      const data = parseJsonResponse(response, d => Array.isArray(d.candidates));
 
       if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
         return data.candidates[0].content.parts[0].text.trim();
@@ -425,6 +425,22 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 }
 
 // --------- Helper Functions ---------
+
+function parseJsonResponse(
+  response: RequestUrlResponse,
+  validator?: (data: any) => boolean
+): any {
+  try {
+    const data = JSON.parse(response.text);
+    if (validator && !validator(data)) {
+      throw new Error("Response format validation failed.");
+    }
+    return data;
+  } catch (e) {
+    console.error("Failed to parse API response:", response.text);
+    throw new Error("Invalid JSON or unexpected structure in API response.");
+  }
+}
 
 async function handleExtractedContent(
   plugin: GPTImageOCRPlugin,
