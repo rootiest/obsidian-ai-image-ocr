@@ -472,7 +472,10 @@ async function handleExtractedContent(
     (_, fmt) => moment().format(fmt.trim()),
   );
 
-  const folder = plugin.settings.noteFolderPath.trim();
+  const folder = plugin.settings.noteFolderPath
+    .replace(/{{(.*?)}}/g, (_, fmt) => moment().format(fmt.trim()))
+    .trim();
+
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
 
   // Ensure folder exists
