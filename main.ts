@@ -334,20 +334,24 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         );
     }
 
-    new Setting(containerEl)
+    const headerSetting = new Setting(containerEl)
       .setName("Header template")
-      .setDesc(
-        "Optional markdown placed above the extracted text. Supports {{moment.js}} formatting.",
-      )
-      .addTextArea((text) =>
-        text
-          .setPlaceholder("### Extracted at {{YYYY-MM-DD HH:mm:ss}}\\n---")
-          .setValue(this.plugin.settings.headerTemplate)
-          .onChange(async (value) => {
-            this.plugin.settings.headerTemplate = value;
-            await this.plugin.saveSettings();
-          }),
-      );
+      .setDesc("");
+    headerSetting.descEl.appendText("Optional markdown placed above the extracted text.");
+    headerSetting.descEl.createEl("br");
+    headerSetting.descEl.appendText("Supports {{moment.js}} formatting.");
+
+    headerSetting.addTextArea((text) => {
+      text
+        .setPlaceholder("### Extracted at {{YYYY-MM-DD HH:mm:ss}}\\n---")
+        .setValue(this.plugin.settings.headerTemplate)
+        .onChange(async (value) => {
+          this.plugin.settings.headerTemplate = value;
+          await this.plugin.saveSettings();
+        });
+      text.inputEl.classList.add("ai-image-ocr__header-textarea");
+    });
+
 
     new Setting(containerEl)
       .setName("Output to new note")
@@ -363,18 +367,21 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       );
 
     if (this.plugin.settings.outputToNewNote) {
-      new Setting(containerEl)
+      const folderSetting = new Setting(containerEl)
         .setName("Note folder path")
-        .setDesc("Relative to vault root (e.g., 'OCR Notes')")
-        .addText((text) =>
-          text
-            .setPlaceholder("OCR Notes")
-            .setValue(this.plugin.settings.noteFolderPath)
-            .onChange(async (value) => {
-              this.plugin.settings.noteFolderPath = value.trim();
-              await this.plugin.saveSettings();
-            }),
-        );
+        .setDesc("");
+      folderSetting.descEl.appendText("Relative to vault root (e.g., 'OCR Notes')");
+      folderSetting.descEl.createEl("br");
+      folderSetting.descEl.appendText("Supports {{moment.js}} formatting.");
+      folderSetting.addText((text) =>
+        text
+          .setPlaceholder("OCR Notes")
+          .setValue(this.plugin.settings.noteFolderPath)
+          .onChange(async (value) => {
+            this.plugin.settings.noteFolderPath = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
 
       new Setting(containerEl)
         .setName("Note name template")

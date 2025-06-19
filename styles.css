@@ -22,4 +22,8 @@
   color: var(--text-accent);
 }
 
-
+.ai-image-ocr__header-textarea {
+  width: 100%;
+  min-height: 6em;
+  font-family: var(--font-text);
+}
