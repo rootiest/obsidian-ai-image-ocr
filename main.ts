@@ -6,6 +6,8 @@ import {
   Notice,
   TFile,
   MarkdownView,
+  MarkdownFileInfo,
+  RequestUrlResponse,
   Editor,
   requestUrl,
 } from "obsidian";
@@ -148,7 +150,7 @@ class GeminiProvider implements OCRProvider {
 export default class GPTImageOCRPlugin extends Plugin {
   settings: GPTImageOCRSettings;
 
-  async onload() {
+  async onload(): Promise<void> {
     await this.loadSettings();
 
     // --- Loaded Image OCR ---
@@ -183,14 +185,11 @@ export default class GPTImageOCRPlugin extends Plugin {
         }
       },
     });
-
     // --- Embedded Image OCR ---
     this.addCommand({
       id: "extract-text-from-embedded-image",
       name: "Extract Text from Embedded Image",
-      // Update extract-text-from-embedded-image command
-      // Inside editorCallback:
-      editorCallback: async (editor: Editor, view: MarkdownView) => {
+      editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
         const sel = editor.getSelection();
         const embedMatch = sel.match(/!\[\[.*?\]\]/) || sel.match(/!\[.*?\]\(.*?\)/);
 
@@ -531,12 +530,10 @@ async function handleExtractedContent(
       const updatedContent = existing + "\n\n" + content;
 
       await plugin.app.vault.modify(file, updatedContent);
-      const leaf = await plugin.app.workspace.getLeaf(true);
+      const leaf = plugin.app.workspace.getLeaf(true);
       await leaf.openFile(file);
 
-      const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-      const activeEditor = view?.editor;
-
+      const activeEditor = plugin.app.workspace.activeEditor?.editor;
       if (activeEditor) {
         const pos = activeEditor.offsetToPos(updatedContent.length);
         activeEditor.setCursor(pos);
@@ -570,6 +567,7 @@ async function handleExtractedContent(
     }
   }
 
+  if (!(file instanceof TFile)) return;
   await plugin.app.workspace.getLeaf(true).openFile(file);
 }
 
