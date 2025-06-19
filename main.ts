@@ -171,6 +171,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           notice.hide();
 
           if (content) {
+            const editor = this.app.workspace.activeEditor?.editor;
             await handleExtractedContent(this, content, editor ?? null);
           } else {
             new Notice("No content returned.");
