@@ -433,6 +433,20 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
 // --------- Helper Functions ---------
 
+
+function scrollEditorToCursor(editor: Editor) {
+  try {
+    // Attempt to access CodeMirror 6 scrollIntoView
+    const cm = (editor as any)?.cm;
+    if (cm?.scrollIntoView && typeof cm.scrollIntoView === "function") {
+      cm.scrollIntoView(editor.getCursor(), 100);
+    }
+  } catch (e) {
+    console.warn("scrollIntoView failed or is unsupported in this version.", e);
+    // Silently fail – no scroll is better than crash
+  }
+}
+
 function parseJsonResponse(
   response: RequestUrlResponse,
   validator?: (data: any) => boolean
@@ -448,6 +462,7 @@ function parseJsonResponse(
     throw new Error("Invalid JSON or unexpected structure in API response.");
   }
 }
+
 
 async function handleExtractedContent(
   plugin: GPTImageOCRPlugin,
@@ -467,7 +482,15 @@ async function handleExtractedContent(
 
   if (!plugin.settings.outputToNewNote) {
     if (editor) {
+      const cursor = editor.getCursor();
       editor.replaceSelection(content);
+
+      const newPos = editor.offsetToPos(
+        editor.posToOffset(cursor) + content.length
+      );
+      editor.setCursor(newPos);
+
+      scrollEditorToCursor(editor);
     } else {
       new Notice("No active editor to paste into.");
     }
@@ -502,14 +525,26 @@ async function handleExtractedContent(
   let file = plugin.app.vault.getAbstractFileByPath(path);
 
   if (file instanceof TFile) {
-    // If append is off, ensure a unique note is created
     if (plugin.settings.appendIfExists) {
       const existing = await plugin.app.vault.read(file);
-      await plugin.app.vault.modify(file, existing + "\n\n" + content);
-      await plugin.app.workspace.getLeaf(true).openFile(file);
+      const updatedContent = existing + "\n\n" + content;
+
+      await plugin.app.vault.modify(file, updatedContent);
+      const leaf = await plugin.app.workspace.getLeaf(true);
+      await leaf.openFile(file);
+
+      const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+      const activeEditor = view?.editor;
+
+      if (activeEditor) {
+        const pos = activeEditor.offsetToPos(updatedContent.length);
+        activeEditor.setCursor(pos);
+        scrollEditorToCursor(activeEditor);
+      }
+
       return;
     } else {
-      // Find and create a unique file
+      // Create a unique file if not appending
       let base = name;
       let ext = ".md";
       let counter = 1;
