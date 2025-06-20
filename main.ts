@@ -9,6 +9,7 @@ import {
   MarkdownFileInfo,
   RequestUrlResponse,
   Editor,
+  EditorPosition,
   requestUrl,
 } from "obsidian";
 
@@ -436,16 +437,23 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
 function scrollEditorToCursor(editor: Editor) {
   try {
-    // Attempt to access CodeMirror 6 scrollIntoView
-    const cm = (editor as any)?.cm;
-    if (cm?.scrollIntoView && typeof cm.scrollIntoView === "function") {
-      cm.scrollIntoView(editor.getCursor(), 100);
+    // Check if editor has a `cm` property and that it looks like a CodeMirror editor
+    const maybeCM = (editor as Editor & { cm?: unknown }).cm;
+
+    if (
+      maybeCM &&
+      typeof maybeCM === "object" &&
+      "scrollIntoView" in maybeCM &&
+      typeof (maybeCM as { scrollIntoView?: unknown }).scrollIntoView === "function"
+    ) {
+      (maybeCM as { scrollIntoView: (pos: EditorPosition, margin?: number) => void })
+        .scrollIntoView(editor.getCursor(), 100);
     }
   } catch (e) {
     console.warn("scrollIntoView failed or is unsupported in this version.", e);
-    // Silently fail – no scroll is better than crash
   }
 }
+
 
 function parseJsonResponse(
   response: RequestUrlResponse,
