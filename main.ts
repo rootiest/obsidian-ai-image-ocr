@@ -434,6 +434,14 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
 // --------- Helper Functions ---------
 
+function moveCursorToEnd(editor: Editor) {
+  requestAnimationFrame(() => {
+    const lastLine = editor.lastLine();
+    const lastCh = editor.getLine(lastLine)?.length || 0;
+    editor.setCursor({ line: lastLine, ch: lastCh });
+    scrollEditorToCursor(editor);
+  });
+}
 
 function scrollEditorToCursor(editor: Editor) {
   try {
@@ -577,6 +585,14 @@ async function handleExtractedContent(
 
   if (!(file instanceof TFile)) return;
   await plugin.app.workspace.getLeaf(true).openFile(file);
+
+  // Move cursor to end after opening the newly created note
+  setTimeout(() => {
+    const activeEditor = plugin.app.workspace.activeEditor?.editor;
+    if (activeEditor) {
+      moveCursorToEnd(activeEditor);
+    }
+  }, 10);
 }
 
 /**
