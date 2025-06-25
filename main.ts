@@ -99,7 +99,7 @@ class OpenAIProvider implements OCRProvider {
 
 class GeminiProvider implements OCRProvider {
   id = "gemini";
-  name = "Google Gemini 1.5 Flash";
+  name = "Google Gemini 2.5 Flash";
 
   constructor(private apiKey: string) { }
 
@@ -125,7 +125,7 @@ class GeminiProvider implements OCRProvider {
 
     try {
       const response = await requestUrl({
-        url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
+        url: `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -296,7 +296,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) =>
         dropdown
           .addOption("openai", "OpenAI GPT-4o")
-          .addOption("gemini", "Google Gemini 1.5 Flash")
+          .addOption("gemini", "Google Gemini 2.5 Flash")
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
             this.plugin.settings.provider = value as "openai" | "gemini";

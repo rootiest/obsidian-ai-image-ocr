@@ -25,11 +25,16 @@ compared to typically-used tools such as tesseract.
 - Requires [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
 - See [Notes](#notes) for OpenAI API key requirements.
 
-### Google Gemini Flash 1.5
+### Google Gemini Flash 2.5
 
 - A fast and efficient model for text extraction
 - Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits)
 - Requires [Google API key](https://aistudio.google.com/apikey)
+
+> [!TIP]
+> At this time Gemini Flash 2.5 has a rate limit of 10,000 requests per minute and no daily limits.  
+> It's unlikely anyone using this plugin will ever exceed the rate limit.  
+> For that reason, Gemini is the recommended model for most users.
 
 ## Features
 
