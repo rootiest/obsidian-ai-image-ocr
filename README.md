@@ -32,9 +32,11 @@ compared to typically-used tools such as tesseract.
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
 > [!TIP]
-> At this time Gemini Flash 2.5 has a rate limit of 10,000 requests per minute and no daily limits.  
+> At this time the Google Gemini Flash 2.5 free tier (no credit card required)  
+> has a rate limit of 10,000 requests per minute and **no** daily limits.  
 > It's unlikely anyone using this plugin will ever exceed the rate limit.  
-> For that reason, Gemini is the recommended model for most users.
+> For that reason, Gemini is the recommended model for most users
+> as it is effectively free to use.
 
 ## Features
 
@@ -98,7 +100,8 @@ and extract to your plugins directory.
 
 - Choose to output the extracted text to another note.  
    This can be useful for keeping your extracted text organized into
-  individual notes.
+  individual notes. If this option is not enabled, the text will be output
+  at the cursor position in the current note.
 
 - If you choose to output to another note, you can configure the
   folder path where the note will be created.
@@ -113,24 +116,41 @@ and extract to your plugins directory.
 
 ## Usage
 
+### Output Behavior
+
+- If a header template is configured
+  it will be inserted before the extracted text.
+- If the "Output to another note" option is enabled:  
+  The extracted text will be inserted into a new note
+  or an existing note based on your settings.
+- If the "Output to another note" option is disabled:  
+  The extracted text will be inserted
+  at the cursor position in the current note.
+- If an image embed is selected and the
+  "Extract text from Embedded Image" command is used:  
+  The extracted text will replace the embed.  
+  This applies regardless of whether the
+  "Output to another note" option is enabled or not.
+
 ### Open An Image For Extraction
 
 1. Use the command palette (`Ctrl+P`) and search for "Extract Text from Image".
 2. Select the source image from the image selection window.
 3. The image data will be transmitted to the AI model for text extraction.
-4. The text from your image will be
-   inserted according to your settings configuration.
+4. The text from your image will be [inserted
+   according to your settings configuration.](#output-behavior)
 
 ### Extract Text From An Embedded Image
 
-1. Place your cursor in the note where you
-   want to insert the extracted text.
-2. If the image embed is not selected,
-   the plugin will find the nearest image embed above the cursor.
+1. Place your cursor in the note **below**
+   the embedded image you wish to extract from.
+2. The plugin will find the nearest image embed above the cursor.  
+   If an embedded image is selected, it will be used as the source
+   and then replaced by the output text.
 3. Use the command palette (`Ctrl+P`) and
    search for "Extract Text from Embedded Image".
-4. The text from the embedded image will be
-   inserted according to your settings configuration.
+4. The text from the embedded image will be [inserted
+   according to your settings configuration.](#output-behavior)
 
 ## Notes
 
