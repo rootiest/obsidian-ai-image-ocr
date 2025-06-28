@@ -28,13 +28,25 @@ compared to typically-used tools such as tesseract.
 ### Google Gemini Flash 2.5
 
 - A fast and efficient model for text extraction
-- Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+- Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
+- Requires [Google API key](https://aistudio.google.com/apikey)
+
+### Gemini 2.5 Flash-Lite Preview
+
+- A fast and lightweight model for text extraction
+- Free tier available with especially generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
+- Requires [Google API key](https://aistudio.google.com/apikey)
+
+### Gemini 2.5 Pro
+
+- A slower but extremely accurate model for text extraction
+- Requires a paid tier API account. See: [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
 > [!TIP]
 > At this time the Google Gemini Flash 2.5 free tier (no credit card required)  
-> has a rate limit of 10,000 requests per minute and **no** daily limits.  
-> It's unlikely anyone using this plugin will ever exceed the rate limit.  
+> has a rate limit of 250 RPD (requests per day).  
+> If that is insufficient for your needs, Flash-Lite has a 1,000 RPD limit.  
 > For that reason, Gemini is the recommended model for most users
 > as it is effectively free to use.
 
