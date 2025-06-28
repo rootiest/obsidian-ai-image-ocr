@@ -5,7 +5,7 @@
  https://opensource.org/licenses/MIT
 -->
 
-# Obsidian AI Image OCR Plugin
+# AI Image OCR Plugin
 
 A plugin for Obsidian that extracts text from images using
 OCR powered by AI image recognition.
