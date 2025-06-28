@@ -15,7 +15,15 @@ import {
 
 interface GPTImageOCRSettings {
 
-  provider: "openai" | "gemini" | "gemini-lite" | "gemini-pro";
+  provider:
+  | "openai"
+  | "openai-mini"
+  | "openai-4.1"
+  | "openai-4.1-mini"
+  | "openai-4.1-nano"
+  | "gemini"
+  | "gemini-lite"
+  | "gemini-pro";
 
   openaiApiKey: string;
   geminiApiKey: string;
@@ -26,6 +34,17 @@ interface GPTImageOCRSettings {
   appendIfExists: boolean;
   headerTemplate: string;
 }
+
+const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> = {
+  openai: "OpenAI GPT-4o",
+  "openai-mini": "OpenAI GPT-4o Mini",
+  "openai-4.1": "OpenAI GPT-4.1",
+  "openai-4.1-mini": "OpenAI GPT-4.1 Mini",
+  "openai-4.1-nano": "OpenAI GPT-4.1 Nano",
+  gemini: "Google Gemini 2.5 Flash",
+  "gemini-lite": "Google Gemini 2.5 Flash-Lite Preview 06-17",
+  "gemini-pro": "Google Gemini 2.5 Pro",
+};
 
 const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   provider: "openai",
@@ -46,13 +65,19 @@ interface OCRProvider {
 
 class OpenAIProvider implements OCRProvider {
   id = "openai";
-  name = "OpenAI GPT-4o";
+  name: string;
 
-  constructor(private apiKey: string) { }
+  constructor(
+    private apiKey: string,
+    private model: string = "gpt-4o",
+    nameOverride?: string
+  ) {
+    this.name = nameOverride ?? model;
+  }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
     const payload = {
-      model: "gpt-4o",
+      model: this.model,
       messages: [
         {
           role: "user",
@@ -101,12 +126,15 @@ class OpenAIProvider implements OCRProvider {
 
 class GeminiProvider implements OCRProvider {
   id = "gemini";
-  name = "Google Gemini";
+  name: string;
 
   constructor(
     private apiKey: string,
-    private model: string = "models/gemini-2.5-flash"
-  ) { }
+    private model: string = "models/gemini-2.5-flash",
+    nameOverride?: string
+  ) {
+    this.name = nameOverride ?? model.replace(/^models\//, "");
+  }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
     const payload = {
@@ -266,15 +294,26 @@ export default class GPTImageOCRPlugin extends Plugin {
 
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
+    const name = FRIENDLY_PROVIDER_NAMES[provider];
 
     if (provider === "gemini") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash");
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash", name);
     } else if (provider === "gemini-lite") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash-lite-preview-06-17");
-    } else if (provider == "gemini-pro") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-pro");
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash-lite-preview-06-17", name);
+    } else if (provider === "gemini-pro") {
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-pro", name);
+    } else if (provider === "openai-mini") {
+      return new OpenAIProvider(openaiApiKey, "gpt-4o-mini", name);
+    } else if (provider === "openai") {
+      return new OpenAIProvider(openaiApiKey, "gpt-4o", name);
+    } else if (provider === "openai-4.1") {
+      return new OpenAIProvider(openaiApiKey, "gpt-4.1", name);
+    } else if (provider === "openai-4.1-mini") {
+      return new OpenAIProvider(openaiApiKey, "gpt-4.1-mini", name);
+    } else if (provider === "openai-4.1-nano") {
+      return new OpenAIProvider(openaiApiKey, "gpt-4.1-nano", name);
     } else {
-      return new OpenAIProvider(openaiApiKey);
+      throw new Error("Unknown provider");
     }
   }
 
@@ -306,12 +345,16 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) =>
         dropdown
           .addOption("openai", "OpenAI GPT-4o")
+          .addOption("openai-mini", "OpenAI GPT-4o Mini")
+          .addOption("openai-4.1", "OpenAI GPT-4.1")
+          .addOption("openai-4.1-mini", "OpenAI GPT-4.1 Mini")
+          .addOption("openai-4.1-nano", "OpenAI GPT-4.1 Nano")
           .addOption("gemini", "Google Gemini 2.5 Flash")
           .addOption("gemini-lite", "Google Gemini 2.5 Flash-Lite Preview 06-17")
           .addOption("gemini-pro", "Google Gemini 2.5 Pro")
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
-            this.plugin.settings.provider = value as "openai" | "gemini" | "gemini-lite" | "gemini-pro";
+            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro";
             await this.plugin.saveSettings();
             this.display();
           }),
@@ -329,6 +372,18 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     } else if (this.plugin.settings.provider === "gemini-pro") {
       new Setting(containerEl)
         .setDesc("A slower but extremely powerful model. Requires paid tier API.");
+    } else if (this.plugin.settings.provider === "openai-mini") {
+      new Setting(containerEl)
+        .setDesc("A lower cost and lower latency model, slightly lower quality. API requires payment.");
+    } else if (this.plugin.settings.provider === "openai-4.1") {
+      new Setting(containerEl)
+        .setDesc("A powerful GPT-4-tier model. API requires payment.");
+    } else if (this.plugin.settings.provider === "openai-4.1-mini") {
+      new Setting(containerEl)
+        .setDesc("Smaller GPT-4.1 variant for faster responses, lower cost. API requires payment.");
+    } else if (this.plugin.settings.provider === "openai-4.1-nano") {
+      new Setting(containerEl)
+        .setDesc("Minimal GPT-4.1 variant for lowest cost and latency. API requires payment.");
     }
 
     if (this.plugin.settings.provider.startsWith("openai")) {
