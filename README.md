@@ -18,29 +18,58 @@ compared to typically-used tools such as tesseract.
 
 ## Supported Models
 
-### OpenAI GPT-4o
+### OpenAI Models
+
+#### GPT-4o (`gpt-4o`)
 
 - A powerful model for text extraction
-- Not free, but very inexpensive. See: [Pricing](https://platform.openai.com/docs/pricing)
+- Not free, but very inexpensive — see [Pricing](https://platform.openai.com/docs/pricing)
 - Requires [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
-- See [Notes](#notes) for OpenAI API key requirements.
+- See [Notes](#notes) for API access requirements
 
-### Google Gemini Flash 2.5
+#### GPT-4o Mini (`gpt-4o-mini`)
+
+- Lower cost and latency than GPT-4o
+- Slightly reduced accuracy
+- Requires [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
+
+#### GPT-4.1 (`gpt-4.1`)
+
+- Successor to GPT-4, optimized for production use
+- Requires GPT-4 API access and billing
+- See [Pricing](https://platform.openai.com/docs/guides/gpt#model-overview)
+
+#### GPT-4.1 Mini (`gpt-4.1-mini`)
+
+- Lightweight version of GPT-4.1
+- Faster and more affordable, with slightly reduced capabilities
+
+#### GPT-4.1 Nano (`gpt-4.1-nano`)
+
+- Extremely low-latency and low-cost version of GPT-4.1
+- Suitable for fast, low-resource scenarios
+
+---
+
+### Google Gemini Models
+
+#### Gemini 2.5 Flash (`gemini-2.5-flash`)
 
 - A fast and efficient model for text extraction
-- Free tier available with generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
+- Free tier available with generous rate limits — see [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
-### Gemini 2.5 Flash-Lite Preview
+#### Gemini 2.5 Flash-Lite Preview (`gemini-2.5-flash-lite-preview-06-17`)
 
-- A fast and lightweight model for text extraction
-- Free tier available with especially generous rate limits. See: [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
+- Lightweight version of Gemini Flash
+- Free tier with especially generous limits
+- Useful for large volumes of low-latency OCR
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
-### Gemini 2.5 Pro
+#### Gemini 2.5 Pro (`gemini-2.5-pro`)
 
-- A slower but extremely accurate model for text extraction
-- Requires a paid tier API account. See: [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
+- Slower but extremely accurate model for OCR
+- Requires paid tier access — see [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
 > [!TIP]
