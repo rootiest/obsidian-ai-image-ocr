@@ -14,7 +14,9 @@ import {
 } from "obsidian";
 
 interface GPTImageOCRSettings {
-  provider: "openai" | "gemini";
+
+  provider: "openai" | "gemini" | "gemini-lite" | "gemini-pro";
+
   openaiApiKey: string;
   geminiApiKey: string;
 
@@ -99,9 +101,12 @@ class OpenAIProvider implements OCRProvider {
 
 class GeminiProvider implements OCRProvider {
   id = "gemini";
-  name = "Google Gemini 2.5 Flash";
+  name = "Google Gemini";
 
-  constructor(private apiKey: string) { }
+  constructor(
+    private apiKey: string,
+    private model: string = "models/gemini-2.5-flash"
+  ) { }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
     const payload = {
@@ -111,7 +116,7 @@ class GeminiProvider implements OCRProvider {
           parts: [
             {
               inline_data: {
-                mime_type: "image/jpeg", // update dynamically if desired
+                mime_type: "image/jpeg",
                 data: image,
               },
             },
@@ -125,7 +130,7 @@ class GeminiProvider implements OCRProvider {
 
     try {
       const response = await requestUrl({
-        url: `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`,
+        url: `https://generativelanguage.googleapis.com/v1beta/${this.model}:generateContent?key=${this.apiKey}`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -262,7 +267,11 @@ export default class GPTImageOCRPlugin extends Plugin {
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
     if (provider === "gemini") {
-      return new GeminiProvider(geminiApiKey);
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash");
+    } else if (provider === "gemini-lite") {
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash-lite-preview-06-17");
+    } else if (provider == "gemini-pro") {
+      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-pro");
     } else {
       return new OpenAIProvider(openaiApiKey);
     }
@@ -297,15 +306,18 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         dropdown
           .addOption("openai", "OpenAI GPT-4o")
           .addOption("gemini", "Google Gemini 2.5 Flash")
+          .addOption("gemini-lite", "Google Gemini 2.5 Flash-Lite Preview 06-17")
+          .addOption("gemini-pro", "Google Gemini 2.5 Pro")
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
-            this.plugin.settings.provider = value as "openai" | "gemini";
+            this.plugin.settings.provider = value as "openai" | "gemini" | "gemini-lite" | "gemini-pro";
             await this.plugin.saveSettings();
             this.display();
           }),
       );
 
     if (this.plugin.settings.provider === "openai") {
+    if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
         .setName("OpenAI API Key")
         .setDesc("Your OpenAI API key")
@@ -320,7 +332,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         );
     }
 
-    if (this.plugin.settings.provider === "gemini") {
+    if (this.plugin.settings.provider.startsWith("gemini")) {
       new Setting(containerEl)
         .setName("Gemini API Key")
         .setDesc("Your Google Gemini API key")
