@@ -266,6 +266,7 @@ export default class GPTImageOCRPlugin extends Plugin {
 
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
+
     if (provider === "gemini") {
       return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash");
     } else if (provider === "gemini-lite") {
@@ -317,6 +318,19 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       );
 
     if (this.plugin.settings.provider === "openai") {
+      new Setting(containerEl)
+        .setDesc("A fast and highly accurate model. API requires payment.");
+    } else if (this.plugin.settings.provider === "gemini") {
+      new Setting(containerEl)
+        .setDesc("A model with good speed and accuracy. Free tier available.");
+    } else if (this.plugin.settings.provider === "gemini-lite") {
+      new Setting(containerEl)
+        .setDesc("A lightweight, experimental model. Free tier available. Generous rate-limits.");
+    } else if (this.plugin.settings.provider === "gemini-pro") {
+      new Setting(containerEl)
+        .setDesc("A slower but extremely powerful model. Requires paid tier API.");
+    }
+
     if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
         .setName("OpenAI API Key")
