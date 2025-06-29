@@ -24,12 +24,15 @@ interface GPTImageOCRSettings {
   | "gemini"
   | "gemini-lite"
   | "gemini-pro"
-  | "ollama";
+  | "ollama"
+  | "lmstudio";
 
   openaiApiKey: string;
   geminiApiKey: string;
   ollamaUrl: string;
   ollamaModel: string;
+  lmstudioUrl: string;
+  lmstudioModel: string;
 
   outputToNewNote: boolean;
   noteFolderPath: string;
@@ -47,7 +50,8 @@ const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> =
   gemini: "Google Gemini 2.5 Flash",
   "gemini-lite": "Google Gemini 2.5 Flash-Lite Preview 06-17",
   "gemini-pro": "Google Gemini 2.5 Pro",
-  ollama: "Ollama"
+  ollama: "Ollama",
+  lmstudio: "LMStudio"
 };
 
 const DEFAULT_SETTINGS: GPTImageOCRSettings = {
@@ -56,6 +60,8 @@ const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   geminiApiKey: "",
   ollamaUrl: 'http://localhost:11434',
   ollamaModel: "llama3.2-vision",
+  lmstudioUrl: 'http://localhost:1234',
+  lmstudioModel: "google/gemma-3-4b",
   outputToNewNote: false,
   noteFolderPath: "",
   noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
@@ -89,16 +95,30 @@ type OllamaPayload = {
   stream: boolean;
 };
 
+type LmstudioPayload = {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    >;
+  } | {
+    role: string;
+    content: string;
+  }>;
+  max_tokens: number;
+};
 
 class OpenAIProvider implements OCRProvider {
   id: string;
   name: string;
 
   constructor(
-    private apiKey: string,            // OpenAI key (ignored for Ollama)
+    private apiKey: string,            // OpenAI key (ignored for Local)
     private model: string = "gpt-4o",
     private endpoint: string = "https://api.openai.com/v1/chat/completions",
-    private provider: "openai" | "ollama" = "openai",
+    private provider: "openai" | "ollama" | "lmstudio" = "openai",
     nameOverride?: string
   ) {
     this.id = provider;
@@ -106,7 +126,7 @@ class OpenAIProvider implements OCRProvider {
   }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
-    let payload: OpenAIPayload | OllamaPayload;
+    let payload: OpenAIPayload | OllamaPayload | LmstudioPayload;
     let endpoint = this.endpoint;
 
     if (this.provider === "ollama") {
@@ -125,6 +145,26 @@ class OpenAIProvider implements OCRProvider {
         stream: false, // <--- only change needed!
       };
       endpoint = (this.endpoint ?? "http://localhost:11434") + "/api/chat";
+    } else if (this.provider === "lmstudio") {
+      const cleanImage = image.replace(/^data:image\/\w+;base64,/, "");
+      payload = {
+        model: this.model,
+        messages: [
+          {
+            role: "system",
+            content: "You are an AI assistant that analyzes images."
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.", },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }
+            ]
+          }
+        ],
+        max_tokens: 1024,
+      };
+      endpoint = (this.endpoint ?? "http://localhost:1234") + "/api/v0/chat/completions";
     } else {
       payload = {
         model: this.model,
@@ -381,6 +421,14 @@ export default class GPTImageOCRPlugin extends Plugin {
         "ollama",
         name
       );
+    } else if (provider === "lmstudio") {
+      return new OpenAIProvider(
+        "", // no api key
+        this.settings.lmstudioModel || "gemma3",
+        (this.settings.lmstudioUrl?.replace(/\/$/, "") || "http://localhost:1234"),
+        "lmstudio",
+        name
+      );
     } else {
       throw new Error("Unknown provider");
     }
@@ -423,9 +471,10 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
           .addOption("gemini-lite", "Google Gemini 2.5 Flash-Lite Preview 06-17")
           .addOption("gemini-pro", "Google Gemini 2.5 Pro")
           .addOption('ollama', 'Ollama (local)')
+          .addOption('lmstudio', 'LMStudio (local)')
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
-            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro" | "ollama";
+            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro" | "ollama" | "lmstudio";
             await this.plugin.saveSettings();
             this.display();
           }),
@@ -458,6 +507,9 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     } else if (this.plugin.settings.provider === "ollama") {
       new Setting(containerEl)
         .setDesc("Use a locally-hosted Ollama server. Ollama models must be installed separately.");
+    } else if (this.plugin.settings.provider === "lmstudio") {
+      new Setting(containerEl)
+        .setDesc("Use a locally-hosted LMStudio server. LMStudio models must be installed separately.");
     }
     if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
@@ -489,7 +541,6 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         );
     }
 
-
     if (this.plugin.settings.provider === "ollama") {
       // Ollama Server URL
       new Setting(containerEl)
@@ -507,7 +558,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       // Ollama Model Name
       new Setting(containerEl)
         .setName("Ollama Model Name")
-        .setDesc("Enter the name of the vision model to use (e.g. llama3.2-vision, llava).")
+        .setDesc("Enter the ID of the vision model to use (e.g. llama3.2-vision, llava).")
         .addText(text =>
           text
             .setPlaceholder("llama3.2-vision")
@@ -520,13 +571,47 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
       if (!this.plugin.settings.ollamaModel) {
         containerEl.createEl("div", {
-          text: "⚠️ Please specify a vision model name for Ollama (e.g. llama3.2-vision).",
+          text: "⚠️ Please specify a vision model ID for Ollama (e.g. llama3.2-vision).",
           cls: "setting-item-warning"
         });
       }
     }
 
+    if (this.plugin.settings.provider === "lmstudio") {
+      // LMStudio Server URL
+      new Setting(containerEl)
+        .setName("Ollama Server URL")
+        .setDesc("Ollama server address")
+        .addText(text =>
+          text
+            .setValue(this.plugin.settings.lmstudioUrl || "http://localhost:1234")
+            .onChange(async (value) => {
+              this.plugin.settings.lmstudioUrl = value;
+              await this.plugin.saveSettings();
+            })
+        );
 
+      // LMStudio Model Name
+      new Setting(containerEl)
+        .setName("LMStudio Model Name")
+        .setDesc("Enter the ID of the vision model to use (e.g. google/gemma-3-4b, qwen/qwen2.5-vl-7b).")
+        .addText(text =>
+          text
+            .setPlaceholder("gemma3")
+            .setValue(this.plugin.settings.lmstudioModel || "")
+            .onChange(async (value) => {
+              this.plugin.settings.lmstudioModel = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      if (!this.plugin.settings.lmstudioModel) {
+        containerEl.createEl("div", {
+          text: "⚠️ Please specify a vision model ID for LMStudio (e.g. google/gemma-3-4b, qwen/qwen2.5-vl-7b).",
+          cls: "setting-item-warning"
+        });
+      }
+    }
 
     const headerSetting = new Setting(containerEl)
       .setName("Header template")
@@ -618,10 +703,6 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     descEl.appendText(", the extracted text will ");
     descEl.createEl("em", { text: "replace the embed directly" });
     descEl.appendText(" — ignoring the output-to-note and header template settings above.");
-
-
-
-
   }
 }
 
