@@ -23,10 +23,13 @@ interface GPTImageOCRSettings {
   | "openai-4.1-nano"
   | "gemini"
   | "gemini-lite"
-  | "gemini-pro";
+  | "gemini-pro"
+  | "ollama";
 
   openaiApiKey: string;
   geminiApiKey: string;
+  ollamaUrl: string;
+  ollamaModel: string;
 
   outputToNewNote: boolean;
   noteFolderPath: string;
@@ -44,12 +47,15 @@ const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> =
   gemini: "Google Gemini 2.5 Flash",
   "gemini-lite": "Google Gemini 2.5 Flash-Lite Preview 06-17",
   "gemini-pro": "Google Gemini 2.5 Pro",
+  ollama: "Ollama"
 };
 
 const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   provider: "openai",
   openaiApiKey: "",
   geminiApiKey: "",
+  ollamaUrl: 'http://localhost:11434',
+  ollamaModel: "llama3.2-vision",
   outputToNewNote: false,
   noteFolderPath: "",
   noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
@@ -63,62 +69,116 @@ interface OCRProvider {
   extractTextFromBase64(image: string): Promise<string | null>;
 }
 
+type OpenAIPayload = {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: Array<any>;
+  }>;
+  max_tokens: number;
+};
+
+type OllamaPayload = {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: string;
+    images: string[];
+  }>;
+  max_tokens: number;
+  stream: boolean;
+};
+
+
 class OpenAIProvider implements OCRProvider {
-  id = "openai";
+  id: string;
   name: string;
 
   constructor(
-    private apiKey: string,
+    private apiKey: string,            // OpenAI key (ignored for Ollama)
     private model: string = "gpt-4o",
+    private endpoint: string = "https://api.openai.com/v1/chat/completions",
+    private provider: "openai" | "ollama" = "openai",
     nameOverride?: string
   ) {
+    this.id = provider;
     this.name = nameOverride ?? model;
   }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
-    const payload = {
-      model: this.model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${image}` },
-            },
-            {
-              type: "text",
-              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
-            },
-          ],
-        },
-      ],
-      max_tokens: 1024,
+    let payload: OpenAIPayload | OllamaPayload;
+    let endpoint = this.endpoint;
+
+    if (this.provider === "ollama") {
+      // Remove any data: prefix for base64 image
+      const cleanImage = image.replace(/^data:image\/\w+;base64,/, "");
+      payload = {
+        model: this.model,
+        messages: [
+          {
+            role: "user",
+            content: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
+            images: [cleanImage],
+          },
+        ],
+        max_tokens: 1024,
+        stream: false, // <--- only change needed!
+      };
+      endpoint = (this.endpoint ?? "http://localhost:11434") + "/api/chat";
+    } else {
+      payload = {
+        model: this.model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: `data:image/jpeg;base64,${image}` },
+              },
+              {
+                type: "text",
+                text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
+              },
+            ],
+          },
+        ],
+        max_tokens: 1024,
+      };
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
+    if (this.provider === "openai") {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
 
     try {
       const response = await requestUrl({
-        url: "https://api.openai.com/v1/chat/completions",
+        url: endpoint,
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
-      const data = parseJsonResponse(response, d => Array.isArray(d.choices));
-
-      const content = data.choices?.[0]?.message?.content?.trim();
-
-      if (content) {
-        return content;
+      if (this.provider === "ollama") {
+        // The response is { message: { role, content } }
+        const data = parseJsonResponse(response, d => !!d.message?.content);
+        const content = data.message?.content?.trim();
+        if (content) return content;
+        console.warn("Ollama response did not contain expected text:", data);
+        return null;
+      } else {
+        // OpenAI style response
+        const data = parseJsonResponse(response, d => Array.isArray(d.choices));
+        const content = data.choices?.[0]?.message?.content?.trim();
+        if (content) return content;
+        console.warn(`${this.provider} response did not contain expected text:`, data);
+        return null;
       }
-
-      console.warn("OpenAI response did not contain expected text:", data);
-      return null;
     } catch (err) {
-      console.error("OpenAI fetch error:", err);
+      console.error(`${this.provider} fetch error:`, err);
       return null;
     }
   }
@@ -292,6 +352,7 @@ export default class GPTImageOCRPlugin extends Plugin {
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
   }
 
+
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
     const name = FRIENDLY_PROVIDER_NAMES[provider];
@@ -312,10 +373,19 @@ export default class GPTImageOCRPlugin extends Plugin {
       return new OpenAIProvider(openaiApiKey, "gpt-4.1-mini", name);
     } else if (provider === "openai-4.1-nano") {
       return new OpenAIProvider(openaiApiKey, "gpt-4.1-nano", name);
+    } else if (provider === "ollama") {
+      return new OpenAIProvider(
+        "", // no api key
+        this.settings.ollamaModel || "llama3.2-vision",
+        (this.settings.ollamaUrl?.replace(/\/$/, "") || "http://localhost:11434"),
+        "ollama",
+        name
+      );
     } else {
       throw new Error("Unknown provider");
     }
   }
+
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -352,9 +422,10 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
           .addOption("gemini", "Google Gemini 2.5 Flash")
           .addOption("gemini-lite", "Google Gemini 2.5 Flash-Lite Preview 06-17")
           .addOption("gemini-pro", "Google Gemini 2.5 Pro")
+          .addOption('ollama', 'Ollama (local)')
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
-            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro";
+            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro" | "ollama";
             await this.plugin.saveSettings();
             this.display();
           }),
@@ -384,8 +455,10 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     } else if (this.plugin.settings.provider === "openai-4.1-nano") {
       new Setting(containerEl)
         .setDesc("Minimal GPT-4.1 variant for lowest cost and latency. API requires payment.");
+    } else if (this.plugin.settings.provider === "ollama") {
+      new Setting(containerEl)
+        .setDesc("Use a locally-hosted Ollama server. Ollama models must be installed separately.");
     }
-
     if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
         .setName("OpenAI API Key")
@@ -415,6 +488,45 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
             }),
         );
     }
+
+
+    if (this.plugin.settings.provider === "ollama") {
+      // Ollama Server URL
+      new Setting(containerEl)
+        .setName("Ollama Server URL")
+        .setDesc("Ollama server address")
+        .addText(text =>
+          text
+            .setValue(this.plugin.settings.ollamaUrl || "http://localhost:11434")
+            .onChange(async (value) => {
+              this.plugin.settings.ollamaUrl = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      // Ollama Model Name
+      new Setting(containerEl)
+        .setName("Ollama Model Name")
+        .setDesc("Enter the name of the vision model to use (e.g. llama3.2-vision, llava).")
+        .addText(text =>
+          text
+            .setPlaceholder("llama3.2-vision")
+            .setValue(this.plugin.settings.ollamaModel || "")
+            .onChange(async (value) => {
+              this.plugin.settings.ollamaModel = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      if (!this.plugin.settings.ollamaModel) {
+        containerEl.createEl("div", {
+          text: "⚠️ Please specify a vision model name for Ollama (e.g. llama3.2-vision).",
+          cls: "setting-item-warning"
+        });
+      }
+    }
+
+
 
     const headerSetting = new Setting(containerEl)
       .setName("Header template")
