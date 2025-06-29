@@ -115,7 +115,7 @@ class OpenAIProvider implements OCRProvider {
   name: string;
 
   constructor(
-    private apiKey: string,            // OpenAI key (ignored for Local)
+    private apiKey: string,
     private model: string = "gpt-4o",
     private endpoint: string = "https://api.openai.com/v1/chat/completions",
     private provider: "openai" | "ollama" | "lmstudio" = "openai",
@@ -142,7 +142,7 @@ class OpenAIProvider implements OCRProvider {
           },
         ],
         max_tokens: 1024,
-        stream: false, // <--- only change needed!
+        stream: false,
       };
       endpoint = (this.endpoint ?? "http://localhost:11434") + "/api/chat";
     } else if (this.provider === "lmstudio") {
@@ -506,10 +506,10 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         .setDesc("Minimal GPT-4.1 variant for lowest cost and latency. API requires payment.");
     } else if (this.plugin.settings.provider === "ollama") {
       new Setting(containerEl)
-        .setDesc("Use a locally-hosted Ollama server. Ollama models must be installed separately.");
+        .setDesc("A locally-hosted Ollama server. Ollama models must be installed separately.");
     } else if (this.plugin.settings.provider === "lmstudio") {
       new Setting(containerEl)
-        .setDesc("Use a locally-hosted LMStudio server. LMStudio models must be installed separately.");
+        .setDesc("A locally-hosted LMStudio server. LMStudio models must be installed separately.");
     }
     if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
@@ -545,7 +545,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
       // Ollama Server URL
       new Setting(containerEl)
         .setName("Ollama Server URL")
-        .setDesc("Ollama server address")
+        .setDesc("Enter the Ollama server address.")
         .addText(text =>
           text
             .setValue(this.plugin.settings.ollamaUrl || "http://localhost:11434")
@@ -554,11 +554,14 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
+      const customUrlDesc = containerEl.createEl("div", { cls: "ai-image-ocr__setting-desc" });
+      customUrlDesc.appendText("e.g. ");
+      customUrlDesc.createEl("code", { text: "http://localhost:11434" });
 
       // Ollama Model Name
       new Setting(containerEl)
         .setName("Ollama Model Name")
-        .setDesc("Enter the ID of the vision model to use (e.g. llama3.2-vision, llava).")
+        .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
             .setPlaceholder("llama3.2-vision")
@@ -568,6 +571,12 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
+
+      const customDesc = containerEl.createEl("div", { cls: "ai-image-ocr__setting-desc" });
+      customDesc.appendText("e.g. ");
+      customDesc.createEl("code", { text: "llama3.2-vision" });
+      customDesc.appendText(" or ");
+      customDesc.createEl("code", { text: "llava" });
 
       if (!this.plugin.settings.ollamaModel) {
         containerEl.createEl("div", {
@@ -580,8 +589,8 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     if (this.plugin.settings.provider === "lmstudio") {
       // LMStudio Server URL
       new Setting(containerEl)
-        .setName("Ollama Server URL")
-        .setDesc("Ollama server address")
+        .setName("LMStudio Server URL")
+        .setDesc("Enter the LMStudio server address.")
         .addText(text =>
           text
             .setValue(this.plugin.settings.lmstudioUrl || "http://localhost:1234")
@@ -590,14 +599,17 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
+      const customUrlDesc = containerEl.createEl("div", { cls: "ai-image-ocr__setting-desc" });
+      customUrlDesc.appendText("e.g. ");
+      customUrlDesc.createEl("code", { text: "http://localhost:11434" });
 
       // LMStudio Model Name
       new Setting(containerEl)
         .setName("LMStudio Model Name")
-        .setDesc("Enter the ID of the vision model to use (e.g. google/gemma-3-4b, qwen/qwen2.5-vl-7b).")
+        .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
-            .setPlaceholder("gemma3")
+            .setPlaceholder("google/gemma-3-4b")
             .setValue(this.plugin.settings.lmstudioModel || "")
             .onChange(async (value) => {
               this.plugin.settings.lmstudioModel = value;
@@ -605,9 +617,15 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
             })
         );
 
+      const customDesc = containerEl.createEl("div", { cls: "ai-image-ocr__setting-desc" });
+      customDesc.appendText("e.g. ");
+      customDesc.createEl("code", { text: "google/gemma-3-4b" });
+      customDesc.appendText(" or ");
+      customDesc.createEl("code", { text: "qwen/qwen2.5-vl-7b" });
+
       if (!this.plugin.settings.lmstudioModel) {
         containerEl.createEl("div", {
-          text: "⚠️ Please specify a vision model ID for LMStudio (e.g. google/gemma-3-4b, qwen/qwen2.5-vl-7b).",
+          text: "⚠️ Please specify a vision model ID for LMStudio\n(e.g. google/gemma-3-4b, qwen/qwen2.5-vl-7b).",
           cls: "setting-item-warning"
         });
       }
