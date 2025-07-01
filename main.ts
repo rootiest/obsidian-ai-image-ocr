@@ -25,7 +25,8 @@ interface GPTImageOCRSettings {
   | "gemini-lite"
   | "gemini-pro"
   | "ollama"
-  | "lmstudio";
+  | "lmstudio"
+  | "custom";
 
   openaiApiKey: string;
   geminiApiKey: string;
@@ -33,6 +34,9 @@ interface GPTImageOCRSettings {
   ollamaModel: string;
   lmstudioUrl: string;
   lmstudioModel: string;
+  customApiUrl: string;
+  customApiModel: string;
+  customApiKey: string;
 
   outputToNewNote: boolean;
   noteFolderPath: string;
@@ -51,7 +55,8 @@ const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> =
   "gemini-lite": "Google Gemini 2.5 Flash-Lite Preview 06-17",
   "gemini-pro": "Google Gemini 2.5 Pro",
   ollama: "Ollama",
-  lmstudio: "LMStudio"
+  lmstudio: "LMStudio",
+  custom: "Custom Provider"
 };
 
 const DEFAULT_SETTINGS: GPTImageOCRSettings = {
@@ -62,6 +67,9 @@ const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   ollamaModel: "llama3.2-vision",
   lmstudioUrl: 'http://localhost:1234',
   lmstudioModel: "google/gemma-3-4b",
+  customApiUrl: "",
+  customApiModel: "",
+  customApiKey: "",
   outputToNewNote: false,
   noteFolderPath: "",
   noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
@@ -429,6 +437,14 @@ export default class GPTImageOCRPlugin extends Plugin {
         "lmstudio",
         name
       );
+    } else if (provider === "custom") {
+      return new OpenAIProvider(
+        this.settings.customApiKey || "",
+        this.settings.customApiModel || "gpt-4",
+        this.settings.customApiUrl || "https://example.com/v1/chat/completions",
+        "openai", // still uses openai-style response
+        name
+      );
     } else {
       throw new Error("Unknown provider");
     }
@@ -472,9 +488,10 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
           .addOption("gemini-pro", "Google Gemini 2.5 Pro")
           .addOption('ollama', 'Ollama (local)')
           .addOption('lmstudio', 'LMStudio (local)')
+          .addOption("custom", "Custom OpenAI-compatible")
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
-            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro" | "ollama" | "lmstudio";
+            this.plugin.settings.provider = value as "openai" | "openai-mini" | "gemini" | "gemini-lite" | "gemini-pro" | "ollama" | "lmstudio" | "custom";
             await this.plugin.saveSettings();
             this.display();
           }),
@@ -510,6 +527,9 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     } else if (this.plugin.settings.provider === "lmstudio") {
       new Setting(containerEl)
         .setDesc("A locally-hosted LMStudio server. LMStudio models must be installed separately.");
+    } else if (this.plugin.settings.provider === "custom") {
+      new Setting(containerEl)
+        .setDesc("Any OpenAI-compatible API provider. Must use OpenAI API structure.");
     }
     if (this.plugin.settings.provider.startsWith("openai")) {
       new Setting(containerEl)
@@ -629,6 +649,47 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
           cls: "setting-item-warning"
         });
       }
+    }
+
+    if (this.plugin.settings.provider === "custom") {
+      new Setting(containerEl)
+        .setName("API Endpoint")
+        .setDesc("The full URL to the OpenAI-compatible /chat/completions endpoint.")
+        .addText((text) =>
+          text
+            .setPlaceholder("https://example.com/v1/chat/completions")
+            .setValue(this.plugin.settings.customApiUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiUrl = value.trim();
+              await this.plugin.saveSettings();
+            }),
+        );
+
+      new Setting(containerEl)
+        .setName("Model ID")
+        .setDesc("Enter the model ID to use.")
+        .addText((text) =>
+          text
+            .setPlaceholder("my-model-id")
+            .setValue(this.plugin.settings.customApiModel)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiModel = value.trim();
+              await this.plugin.saveSettings();
+            }),
+        );
+
+      new Setting(containerEl)
+        .setName("API Key")
+        .setDesc("Optional. Leave empty for no key.")
+        .addText((text) =>
+          text
+            .setPlaceholder("sk-...")
+            .setValue(this.plugin.settings.customApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiKey = value.trim();
+              await this.plugin.saveSettings();
+            }),
+        );
     }
 
     const headerSetting = new Setting(containerEl)
