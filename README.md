@@ -10,13 +10,20 @@
 A plugin for Obsidian that extracts text from images using
 OCR powered by AI image recognition.
 
-This is simple plugin for extremely accurate and reliable
+This is a simple plugin for extremely accurate and reliable
 text and handwriting recognition in images.
 
-AI tools are very reliable at text extraction
-compared to typically-used tools such as tesseract.
+AI models are vastly more effective at text extraction
+compared to traditional tools such as Tesseract.
 
 ## Supported Models
+
+> [!TIP]
+> The Google Gemini Flash 2.5 free tier (no credit card required)  
+> has a rate limit of 250 RPD (requests per day).  
+> Flash-Lite allows up to 1,000 RPD.  
+> For most users, Gemini is the recommended model family  
+> as it is fast, highly accurate, and free to use.
 
 ### OpenAI Models
 
@@ -72,28 +79,60 @@ compared to typically-used tools such as tesseract.
 - Requires paid tier access — see [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
-> [!TIP]
-> At this time the Google Gemini Flash 2.5 free tier (no credit card required)  
-> has a rate limit of 250 RPD (requests per day).  
-> If that is insufficient for your needs, Flash-Lite has a 1,000 RPD limit.  
-> For that reason, Gemini is the recommended model for most users
-> as it is effectively free to use.
+---
+
+### Local Models
+
+#### Ollama
+
+- Run models like `llava`, `llava:13b`, or `bakllava` entirely on your machine
+- No internet required
+- Must have [Ollama](https://ollama.com) installed and running
+
+#### LM Studio
+
+- Compatible with local models that support the OpenAI Chat Completions API
+- Requires [LM Studio](https://lmstudio.ai) to be installed and running
+- Works with any vision-capable model that accepts base64 image input
+
+---
+
+### Custom OpenAI-Compatible Providers
+
+- Bring-your-own endpoint support for any service that follows the
+  OpenAI-compatible Chat Completions API
+- Allows integration with services like:
+
+  - [DeepInfra](https://deepinfra.com)
+  - [Fireworks.ai](https://fireworks.ai)
+  - [Together.ai](https://together.ai)
+  - [Groq](https://groq.com)
+  - Custom self-hosted APIs
+
+- Specify the full endpoint URL, model ID, and API key (if required)
+
+> [!NOTE]
+> Custom providers are untested.
+> Successful use will depend on compatibility with the OpenAI API.
+> User must enter the correct address and model ID.
+> Where applicable a valid API key must also be provided.
 
 ## Features
 
 - Extract text from images directly into your Obsidian notes
-- Supports [multiple AI models](#supported-models) for text extraction
-- Supports common image formats (PNG, JPG, WEBM, etc.)
-- Simple and easy-to-use commands
-- Returned text will be in markdown format
-- Select an image via your OS-native file picker
-- Use embedded images as the source
-- Choose to output extracted text to a new note or append to an existing note
-- [Customizable](#configuration) header template for extracted text
-- Supports [moment.js](https://momentjs.com/docs/#/displaying/format/) date
-  formatting in header template and filename template
-- Replaces [selected image embeds](#notes) directly with extracted text
-- Image embeds that are not selected will remain intact
+- Supports [multiple AI models](#supported-models) — cloud and local
+- Use local models via Ollama or LM Studio (no API key or billing required)
+- Add your own OpenAI-compatible provider and model ID
+- Works with common image formats (PNG, JPG, WEBM, etc.)
+- Clean, markdown-formatted output
+- Choose where to send extracted text:
+  - Replace image embed
+  - Insert at cursor
+  - Create or append to another note
+- Optional header template with dynamic timestamp formatting
+- File/folder naming templates using [moment.js](https://momentjs.com/docs/#/displaying/format/)
+- Extract from embedded images or via OS-native file picker
+- Built-in CORS proxy fallback for external images
 
 ## Installation
 
@@ -111,11 +150,11 @@ you can install this plugin using the BRAT plugin manager:
 
 ### Manual Installation
 
-Clone this repository to
-your vault plugins directory (`<vault-name>/.obsidian/plugins/`)
+Clone this repository to your vault plugins directory:
 
 ```sh
-git clone https://github.com/rootiest/obsidian-ai-image-ocr.git
+git clone https://github.com/rootiest/obsidian-ai-image-ocr.git \
+  .obsidian/plugins/obsidian-ai-image-ocr
 ```
 
 Or download the [plugin archive](https://github.com/rootiest/obsidian-ai-image-ocr/archive/refs/heads/main.zip)
@@ -125,111 +164,141 @@ and extract to your plugins directory.
 
 **These settings are required:**
 
-- Select your preferred model in the plugin settings via the `Provider` field.
-  See [Supported Models](#supported-models) for more information on available models.
+- Choose a model provider (`OpenAI`, `Gemini`, `Ollama`, etc.)
+- Select a model ID (e.g. `gpt-4o`, `llava:13b`, etc.)
+- If using a cloud model, enter the corresponding API key
 
-- Enter your API key for the selected model in the `API Key` field.
+**Optional settings include:**
 
-**The remaining settings are all optional:**
-
-- Configure a `Header Template`  
-  This is a block of markdown text
-  that will be inserted before the extracted text.  
-  This can be used to add a title, date, or other information.  
-   [moment.js](https://momentjs.com/docs/#/displaying/format/) formatting
-  of dates and times is supported, e.g. `{{YYYY-MM-DD HH:mm:ss}}`.
-
-- Choose to output the extracted text to another note.  
-   This can be useful for keeping your extracted text organized into
-  individual notes. If this option is not enabled, the text will be output
-  at the cursor position in the current note.
-
-- If you choose to output to another note, you can configure the
-  folder path where the note will be created.
-
-- You can also specify a filename template for the created note,
-  which will support the same
-  [moment.js](https://momentjs.com/docs/#/displaying/format/) formatting
-  mentioned above.
-
-- Finally, you can choose whether to append the extracted text to the note if
-  it already exists or create a new note with an incremented filename.
+- **Header Template**: Markdown inserted before extracted text.  
+  Can use `{{YYYY-MM-DD HH:mm:ss}}` for timestamps.
+- **Output to Another Note**: Extracted text can be routed to a new note.
+- **Folder Path**: Where to create the new note (if enabled).
+- **Filename Template**: Can include dynamic date/time formatting.
+- **Append or Overwrite**: Controls whether to reuse or recreate notes
+  with the same name.
 
 ## Usage
 
 ### Output Behavior
 
-- If a header template is configured
-  it will be inserted before the extracted text.
-- If the "Output to another note" option is enabled:  
-  The extracted text will be inserted into a new note
-  or an existing note based on your settings.
-- If the "Output to another note" option is disabled:  
-  The extracted text will be inserted
-  at the cursor position in the current note.
-- If an image embed is selected and the
-  "Extract text from Embedded Image" command is used:  
-  The extracted text will replace the embed.  
-  This applies regardless of whether the
-  "Output to another note" option is enabled or not.
+- Header template (if set) will be inserted before the extracted text.
+- Output will go to a new note or current note depending on settings.
+- If extracting from an embedded image, the embed will be replaced.
 
 ### Open An Image For Extraction
 
 1. Use the command palette (`Ctrl+P`) and search for "Extract Text from Image".
-2. Select the source image from the image selection window.
-3. The image data will be transmitted to the AI model for text extraction.
-4. The text from your image will be [inserted
-   according to your settings configuration.](#output-behavior)
+2. Select an image file.
+3. Text will be extracted and inserted per your configuration.
 
 ### Extract Text From An Embedded Image
 
-1. Place your cursor in the note **below**
-   the embedded image you wish to extract from.
-2. The plugin will find the nearest image embed above the cursor.  
-   If an embedded image is selected, it will be used as the source
-   and then replaced by the output text.
-3. Use the command palette (`Ctrl+P`) and
-   search for "Extract Text from Embedded Image".
-4. The text from the embedded image will be [inserted
-   according to your settings configuration.](#output-behavior)
+1. Place your cursor below the embedded image.
+2. Use the "Extract Text from Embedded Image" command.
+3. The nearest image above the cursor will be used as the source.
+4. The embed will be replaced by the extracted text.
 
 ## Notes
-
----
 
 > [!TIP]
 > You can select an image embed in your note to use it as the source
 > _and_ replace it with the extracted text.
 
----
-
 > [!NOTE]
 > When using OpenAI:  
-> The API key to use for authentication with the service.  
-> This cannot be a "project" key (`sk-proj`).  
-> A user or service account key is required.
-
----
+> You must use a user or service account key (not a `sk-proj` key).
 
 > [!WARNING]
 > CORS security restrictions may prevent the plugin
 > from collecting externally linked images.  
-> A CORS proxy is used as a fallback to collect external images
-> when direct access fails.
-> If an image is still not accessible,
-> you may need to download it manually before extracting text.
+> A built-in proxy will attempt to fetch the image if direct access fails.  
+> If the proxy fails, you may need to download the image manually.
 
 ---
 
 ## Requirements
 
-- Internet connection
-- An OpenAI or Google Gemini API key
+- Internet connection (unless using a local model)
+- For OpenAI/Gemini: API key
+- For local models: Ollama or LM Studio installed and running
+
+---
+
+## 🚧 Roadmap
+
+The following features are under consideration
+for future releases of the plugin:
+
+### Batch Image Processing
+
+- **Extract from all embedded images** in a note at once.
+- **Process entire folders** of image files (e.g., screenshots, scans).
+- **Configurable output** options for batch mode:
+  - Combine all results into the active note.
+  - Create a new note for each image.
+  - Optionally include image filenames as headings or titles.
+  - Separate output configuration for single and batched extractions.
+
+### Multi-image Request Batching
+
+When performing batched image processing:
+
+- **Send multiple images in a single API request**
+  to reduce latency and API overhead.
+- Use a defined **separator string** between images'
+  OCR results for reliable parsing into output.
+- Improve efficiency and lower cost when working with high-volume image sets.
+
+### Enhanced Output Templates
+
+Use the following dynamic properties in addition to date-time
+in output templates:
+
+- **Model and Provider names**: Use `{{model}}` or `{{provider}}`
+  in output templates.
+- **Image metadata**: Use image metadate in output templates, such as:
+  - `{{image.filename}}` for the original filename
+  - `{{image.path}}` for the full path of the image
+  - `{{image.size}}` for the image size in bytes
+  - `{{image.dimensions}}` for the image dimensions (e.g., "1920x1080")
+  - `{{image.created}}` for the image file creation date
+  - `{{image.modified}}` for the image file last modified date
+- **Note properties**: When outputting to a note, use:
+  - `{{note.title}}` for the note title
+  - `{{note.path}}` for the note path
+  - `{{note.created}}` for the note creation date
+  - `{{note.modified}}` for the note last modified date
+  - `{{note.frontmatter.key}}` for any frontmatter key-value pairs
+- **Other metadata**:
+  Any other relevant metadata that can be extracted from
+  the image file or note.
+
+### Other Potential Enhancements
+
+- **Custom extraction prompt**: Allow customizing the prompt
+  used for text extraction.
+- **Custom provider name**: Allow custom naming when using custom provider.
+- **Custom model name**: Allow setting a custom name for any model used.
+- **Preview before extract**: Show a list of matched images before running OCR.
+- **Hide or obfuscate API keys**: Hide or obfuscate API keys in settings.
+- **Support for more OCR models**, including local or offline alternatives.
+
+> [!NOTE]
+> These goals are exploratory and may evolve based on user feedback and
+> API capabilities. Have a suggestion? Open an issue or discussion on GitHub!
+
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE)
 
 ## Credits
 
-Powered by GPT and open-source OCR libraries.
+- OpenAI GPT models
+- Google Gemini models
+- Ollama + open source vision models like LLaVA and BakLLaVA
+- LM Studio and compatible OpenAI-like APIs
+- Inspired by the limitations of traditional OCR (e.g., Tesseract)
+- Built with ❤️ for Obsidian
