@@ -83,6 +83,23 @@ interface OCRProvider {
   extractTextFromBase64(image: string): Promise<string | null>;
 }
 
+type GeminiPayload = {
+  contents: Array<{
+    role: "user" | "model";
+    parts: Array<
+      | {
+        inline_data: {
+          mime_type: string;
+          data: string;
+        };
+      }
+      | {
+        text: string;
+      }
+    >;
+  }>;
+};
+
 type OpenAIPayload = {
   model: string;
   messages: Array<{
