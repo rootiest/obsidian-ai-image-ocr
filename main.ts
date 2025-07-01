@@ -38,6 +38,8 @@ interface GPTImageOCRSettings {
   customApiModel: string;
   customApiKey: string;
 
+  customPrompt: string;
+
   outputToNewNote: boolean;
   noteFolderPath: string;
   noteNameTemplate: string;
@@ -45,18 +47,21 @@ interface GPTImageOCRSettings {
   headerTemplate: string;
 }
 
+export const DEFAULT_PROMPT_TEXT =
+  "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.";
+
 const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> = {
-  openai: "OpenAI GPT-4o",
+  "openai": "OpenAI GPT-4o",
   "openai-mini": "OpenAI GPT-4o Mini",
   "openai-4.1": "OpenAI GPT-4.1",
   "openai-4.1-mini": "OpenAI GPT-4.1 Mini",
   "openai-4.1-nano": "OpenAI GPT-4.1 Nano",
-  gemini: "Google Gemini 2.5 Flash",
+  "gemini": "Google Gemini 2.5 Flash",
   "gemini-lite": "Google Gemini 2.5 Flash-Lite Preview 06-17",
   "gemini-pro": "Google Gemini 2.5 Pro",
-  ollama: "Ollama",
-  lmstudio: "LMStudio",
-  custom: "Custom Provider"
+  "ollama": "Ollama",
+  "lmstudio": "LMStudio",
+  "custom": "Custom Provider"
 };
 
 const DEFAULT_SETTINGS: GPTImageOCRSettings = {
@@ -70,6 +75,7 @@ const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   customApiUrl: "",
   customApiModel: "",
   customApiKey: "",
+  customPrompt: "",
   outputToNewNote: false,
   noteFolderPath: "",
   noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
@@ -144,6 +150,7 @@ class OpenAIProvider implements OCRProvider {
     private model: string = "gpt-4o",
     private endpoint: string = "https://api.openai.com/v1/chat/completions",
     private provider: "openai" | "ollama" | "lmstudio" = "openai",
+    private prompt: string = DEFAULT_PROMPT_TEXT,
     nameOverride?: string
   ) {
     this.id = provider;
@@ -162,7 +169,7 @@ class OpenAIProvider implements OCRProvider {
         messages: [
           {
             role: "user",
-            content: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
+            content: this.prompt,
             images: [cleanImage],
           },
         ],
@@ -182,7 +189,7 @@ class OpenAIProvider implements OCRProvider {
           {
             role: "user",
             content: [
-              { type: "text", text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.", },
+              { type: "text", text: this.prompt, },
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }
             ]
           }
@@ -203,7 +210,7 @@ class OpenAIProvider implements OCRProvider {
               },
               {
                 type: "text",
-                text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
+                text: this.prompt,
               },
             ],
           },
@@ -256,13 +263,14 @@ class GeminiProvider implements OCRProvider {
   constructor(
     private apiKey: string,
     private model: string = "models/gemini-2.5-flash",
+    private prompt: string = DEFAULT_PROMPT_TEXT,
     nameOverride?: string
   ) {
     this.name = nameOverride ?? model.replace(/^models\//, "");
   }
 
   async extractTextFromBase64(image: string): Promise<string | null> {
-    const payload = {
+    const payload: GeminiPayload = {
       contents: [
         {
           role: "user",
@@ -274,7 +282,7 @@ class GeminiProvider implements OCRProvider {
               },
             },
             {
-              text: "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.",
+              text: this.prompt,
             },
           ],
         },
@@ -423,35 +431,87 @@ export default class GPTImageOCRPlugin extends Plugin {
     const name = FRIENDLY_PROVIDER_NAMES[provider];
 
     if (provider === "gemini") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash", name);
+      return new GeminiProvider(
+        geminiApiKey,
+        "models/gemini-2.5-flash",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "gemini-lite") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash-lite-preview-06-17", name);
+      return new GeminiProvider(
+        geminiApiKey,
+        "models/gemini-2.5-flash-lite-preview-06-17",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "gemini-pro") {
-      return new GeminiProvider(geminiApiKey, "models/gemini-2.5-pro", name);
+      return new GeminiProvider(
+        geminiApiKey,
+        "models/gemini-2.5-pro",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "openai-mini") {
-      return new OpenAIProvider(openaiApiKey, "gpt-4o-mini", name);
+      return new OpenAIProvider(
+        openaiApiKey,
+        "gpt-4o-mini",
+        "https://api.openai.com/v1/chat/completions",
+        "openai",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "openai") {
-      return new OpenAIProvider(openaiApiKey, "gpt-4o", name);
+      return new OpenAIProvider(
+        openaiApiKey,
+        "gpt-4o",
+        "https://api.openai.com/v1/chat/completions",
+        "openai",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "openai-4.1") {
-      return new OpenAIProvider(openaiApiKey, "gpt-4.1", name);
+      return new OpenAIProvider(
+        openaiApiKey,
+        "gpt-4.1",
+        "https://api.openai.com/v1/chat/completions",
+        "openai",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "openai-4.1-mini") {
-      return new OpenAIProvider(openaiApiKey, "gpt-4.1-mini", name);
+      return new OpenAIProvider(
+        openaiApiKey,
+        "gpt-4.1-mini",
+        "https://api.openai.com/v1/chat/completions",
+        "openai",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "openai-4.1-nano") {
-      return new OpenAIProvider(openaiApiKey, "gpt-4.1-nano", name);
+      return new OpenAIProvider(
+        openaiApiKey,
+        "gpt-4.1-nano",
+        "https://api.openai.com/v1/chat/completions",
+        "openai",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        name
+      );
     } else if (provider === "ollama") {
       return new OpenAIProvider(
         "", // no api key
         this.settings.ollamaModel || "llama3.2-vision",
-        (this.settings.ollamaUrl?.replace(/\/$/, "") || "http://localhost:11434"),
+        this.settings.ollamaUrl?.replace(/\/$/, "") || "http://localhost:11434",
         "ollama",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
         name
       );
     } else if (provider === "lmstudio") {
       return new OpenAIProvider(
         "", // no api key
         this.settings.lmstudioModel || "gemma3",
-        (this.settings.lmstudioUrl?.replace(/\/$/, "") || "http://localhost:1234"),
+        this.settings.lmstudioUrl?.replace(/\/$/, "") || "http://localhost:1234",
         "lmstudio",
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
         name
       );
     } else if (provider === "custom") {
@@ -459,7 +519,8 @@ export default class GPTImageOCRPlugin extends Plugin {
         this.settings.customApiKey || "",
         this.settings.customApiModel || "gpt-4",
         this.settings.customApiUrl || "https://example.com/v1/chat/completions",
-        "openai", // still uses openai-style response
+        "openai", // use openai-style response
+        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
         name
       );
     } else {
@@ -708,6 +769,19 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
             }),
         );
     }
+
+    new Setting(containerEl)
+      .setName("Custom Prompt")
+      .setDesc("Optional prompt to send to the model. Leave blank to use the default.")
+      .addTextArea((text) =>
+        text
+          .setPlaceholder("e.g., Extract any handwritten notes or text from the image.")
+          .setValue(this.plugin.settings.customPrompt)
+          .onChange(async (value) => {
+            this.plugin.settings.customPrompt = value;
+            await this.plugin.saveSettings();
+          })
+      );
 
     const headerSetting = new Setting(containerEl)
       .setName("Header template")
