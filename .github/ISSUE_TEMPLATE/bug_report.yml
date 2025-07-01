@@ -1,0 +1,61 @@
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behavior in the plugin"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please provide as much detail as possible to help us reproduce the issue.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: What version of the plugin are you using?
+      placeholder: "e.g. 0.6.0-beta.3"
+    validations:
+      required: true
+
+  - type: input
+    id: obsidian-version
+    attributes:
+      label: Obsidian Version
+      description: Which version of Obsidian are you using?
+      placeholder: "e.g. 1.5.8"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: OS and version (e.g., Windows 11, macOS 14, Linux, etc.)
+      placeholder: "e.g. Arch Linux"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: What actions caused the bug? Include any note content or settings if relevant.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Output or Logs (if any)
+      description: Paste any errors from the developer console or logs.
+      render: shell

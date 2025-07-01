@@ -1,0 +1,30 @@
+name: "✨ Feature Request"
+description: "Suggest an idea or enhancement for the plugin"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! We're always open to ideas that improve the plugin.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like to see added or changed?
+      description: Describe the feature or improvement you'd like to propose.
+      placeholder: |
+        I'd like the plugin to support batch processing of embedded images...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why is this feature important to you?
+      description: Tell us how it would improve your workflow or solve a problem.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any screenshots, related issues, or mockups that help explain the request.
