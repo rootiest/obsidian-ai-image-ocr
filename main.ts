@@ -581,7 +581,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     if (this.plugin.settings.provider === "ollama") {
       // Ollama Server URL
       new Setting(containerEl)
-        .setName("Ollama Server URL")
+        .setName("Server URL")
         .setDesc("Enter the Ollama server address.")
         .addText(text =>
           text
@@ -597,7 +597,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
       // Ollama Model Name
       new Setting(containerEl)
-        .setName("Ollama Model Name")
+        .setName("Model Name")
         .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
@@ -626,7 +626,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
     if (this.plugin.settings.provider === "lmstudio") {
       // LMStudio Server URL
       new Setting(containerEl)
-        .setName("LMStudio Server URL")
+        .setName("Server URL")
         .setDesc("Enter the LMStudio server address.")
         .addText(text =>
           text
@@ -642,7 +642,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
 
       // LMStudio Model Name
       new Setting(containerEl)
-        .setName("LMStudio Model Name")
+        .setName("Model Name")
         .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
@@ -683,7 +683,7 @@ class GPTImageOCRSettingTab extends PluginSettingTab {
         );
 
       new Setting(containerEl)
-        .setName("Model ID")
+        .setName("Model Name")
         .setDesc("Enter the model ID to use.")
         .addText((text) =>
           text
