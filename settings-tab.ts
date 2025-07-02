@@ -205,6 +205,20 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
     }
 
     if (this.plugin.settings.provider === "custom") {
+
+      new Setting(containerEl)
+        .setName("Custom Provider Friendly Name")
+        .setDesc("Optional friendly name for your custom OpenAI-compatible provider.")
+        .addText(text =>
+          text
+            .setPlaceholder("Custom Provider")
+            .setValue(this.plugin.settings.customProviderFriendlyName || "")
+            .onChange(async (value) => {
+              this.plugin.settings.customProviderFriendlyName = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            })
+        );
+
       new Setting(containerEl)
         .setName("API Endpoint")
         .setDesc("The full URL to the OpenAI-compatible /chat/completions endpoint.")

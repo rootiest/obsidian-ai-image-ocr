@@ -16,6 +16,7 @@ import {
 import { OpenAIProvider } from "./providers/openai-provider";
 import { GeminiProvider } from "./providers/gemini-provider";
 import {
+  getFriendlyProviderNames,
   handleExtractedContent,
   findRelevantImageEmbed,
   resolveInternalImagePath,
@@ -146,7 +147,7 @@ export default class GPTImageOCRPlugin extends Plugin {
    */
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
-    const name = FRIENDLY_PROVIDER_NAMES[provider];
+    const name = getFriendlyProviderNames(this.settings)[provider];
 
     if (provider === "gemini") {
       return new GeminiProvider(

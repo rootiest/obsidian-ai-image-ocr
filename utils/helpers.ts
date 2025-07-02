@@ -5,6 +5,20 @@
 
 import { Editor, EditorPosition, RequestUrlResponse, TFile, App, Notice } from "obsidian";
 import GPTImageOCRPlugin from "../main";
+import type { GPTImageOCRSettings } from "../types";
+import { FRIENDLY_PROVIDER_NAMES } from "../types";
+
+/**
+ * Assigns friendly names to OCR providers based on user settings.
+ */
+export function getFriendlyProviderNames(settings: GPTImageOCRSettings): Record<GPTImageOCRSettings["provider"], string> {
+  return {
+    ...FRIENDLY_PROVIDER_NAMES,
+    ...(settings.customProviderFriendlyName?.trim()
+      ? { "custom": settings.customProviderFriendlyName.trim() }
+      : {})
+  };
+}
 
 /**
  * Moves the editor cursor to the end of the document and scrolls into view.

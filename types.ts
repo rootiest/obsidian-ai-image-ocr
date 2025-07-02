@@ -7,23 +7,24 @@ import { RequestUrlResponse } from "obsidian";
 
 export interface GPTImageOCRSettings {
   provider:
-    | "openai"
-    | "openai-mini"
-    | "openai-4.1"
-    | "openai-4.1-mini"
-    | "openai-4.1-nano"
-    | "gemini"
-    | "gemini-lite"
-    | "gemini-pro"
-    | "ollama"
-    | "lmstudio"
-    | "custom";
+  | "openai"
+  | "openai-mini"
+  | "openai-4.1"
+  | "openai-4.1-mini"
+  | "openai-4.1-nano"
+  | "gemini"
+  | "gemini-lite"
+  | "gemini-pro"
+  | "ollama"
+  | "lmstudio"
+  | "custom";
   openaiApiKey: string;
   geminiApiKey: string;
   ollamaUrl: string;
   ollamaModel: string;
   lmstudioUrl: string;
   lmstudioModel: string;
+  customProviderFriendlyName?: string;
   customApiUrl: string;
   customApiModel: string;
   customApiKey: string;
@@ -60,6 +61,7 @@ export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   ollamaModel: "llama3.2-vision",
   lmstudioUrl: 'http://localhost:1234',
   lmstudioModel: "google/gemma-3-4b",
+  customProviderFriendlyName: "Custom Provider",
   customApiUrl: "",
   customApiModel: "",
   customApiKey: "",
