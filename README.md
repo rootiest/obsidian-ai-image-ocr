@@ -125,6 +125,7 @@ compared to traditional tools such as Tesseract.
 - Add your own OpenAI-compatible provider and model ID
 - Works with common image formats (PNG, JPG, WEBM, etc.)
 - Clean, markdown-formatted output
+- Use custom prompt text or stick with the default
 - Choose where to send extracted text:
   - Replace image embed
   - Insert at cursor
@@ -276,8 +277,6 @@ in output templates:
 
 ### Other Potential Enhancements
 
-- **Custom extraction prompt**: Allow customizing the prompt
-  used for text extraction.
 - **Custom provider name**: Allow custom naming when using custom provider.
 - **Custom model name**: Allow setting a custom name for any model used.
 - **Preview before extract**: Show a list of matched images before running OCR.
