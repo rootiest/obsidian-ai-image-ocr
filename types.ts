@@ -3,9 +3,10 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { RequestUrlResponse } from "obsidian";
+import { TFile } from "obsidian";
 
 export interface GPTImageOCRSettings {
+  providerType: "openai" | "gemini";
   provider:
   | "openai"
   | "openai-mini"
@@ -54,6 +55,7 @@ export const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], st
 };
 
 export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
+  providerType: "openai",
   provider: "openai",
   openaiApiKey: "",
   geminiApiKey: "",
@@ -73,11 +75,16 @@ export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   headerTemplate: "",
 };
 
+
 export interface OCRProvider {
   id: string;
   name: string;
+  // Legacy single-image handler (still used by some commands)
   extractTextFromBase64(image: string): Promise<string | null>;
+  // Multi-image + prompt handler (used by batch and prompt-aware workflows)
+  process?(images: PreparedImage[], prompt: string): Promise<string>;
 }
+
 
 export type GeminiPayload = {
   contents: Array<{
@@ -130,3 +137,18 @@ export type LmstudioPayload = {
   }>;
   max_tokens: number;
 };
+
+export interface CollectedImage {
+  source: string; // The original markdown/image link
+  file?: TFile;   // If it's a local vault file
+  isExternal: boolean;
+}
+
+export interface PreparedImage {
+  name: string;
+  base64: string;
+  mime: string;
+  size: number;
+  source: string; // original source path or URL
+}
+

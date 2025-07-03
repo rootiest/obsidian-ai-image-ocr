@@ -9,9 +9,9 @@ import {
 import {
   GPTImageOCRSettings,
   DEFAULT_SETTINGS,
-  FRIENDLY_PROVIDER_NAMES,
   DEFAULT_PROMPT_TEXT,
   OCRProvider,
+  PreparedImage,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai-provider";
 import { GeminiProvider } from "./providers/gemini-provider";
@@ -23,6 +23,8 @@ import {
   fetchExternalImageAsArrayBuffer,
   arrayBufferToBase64,
   selectImageFile,
+  selectFolder,
+  submitOCRRequest
 } from "./utils/helpers";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
@@ -138,6 +140,13 @@ export default class GPTImageOCRPlugin extends Plugin {
         }
       },
     });
+
+    this.addCommand({
+      id: "extract-text-from-image-folder",
+      name: "Extract Text from Image Folder",
+      callback: () => this.extractTextFromImageFolder(),
+    });
+
 
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
   }
@@ -260,4 +269,62 @@ export default class GPTImageOCRPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+
+  /**
+   * Collects images from a folder for text extraction
+  */
+  async extractTextFromImageFolder() {
+    const files = await selectFolder();
+    if (!files) return;
+
+    const imageFiles = Array.from(files).filter(file =>
+      /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name)
+    );
+
+    const prepared = await Promise.all(
+      imageFiles.map(async (file): Promise<PreparedImage> => {
+        const arrayBuffer = await file.arrayBuffer();
+        return {
+          name: file.name,
+          base64: arrayBufferToBase64(arrayBuffer),
+          mime: file.type,
+          size: file.size,
+          source: file.name,
+        };
+      })
+    );
+
+    if (prepared.length === 0) {
+      new Notice("No valid images could be prepared.");
+      return;
+    }
+
+    // Use the same provider instance as everywhere else
+    const provider = this.getProvider();
+    const notice = new Notice(`Extracting text from ${prepared.length} images using ${provider.name}…`, 0);
+    try {
+      // Use the batch process method if available
+      const output = provider.process
+        ? await provider.process(prepared, this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT)
+        : await Promise.all(prepared.map(img => provider.extractTextFromBase64(img.base64))).then(results => results.join("\n\n"));
+
+      notice.hide();
+      await this.insertOutputToEditor(output);
+    } catch (e) {
+      notice.hide();
+      new Notice("Failed to extract text from images.");
+      console.error(e);
+    }
+  }
+
+  async insertOutputToEditor(text: string) {
+    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!activeView) {
+      new Notice("No active editor.");
+      return;
+    }
+    const editor = activeView.editor;
+    editor.replaceSelection(text + "\n");
+  }
+
 }

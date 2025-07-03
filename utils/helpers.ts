@@ -3,10 +3,126 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { Editor, EditorPosition, RequestUrlResponse, TFile, App, Notice } from "obsidian";
+import { Editor, EditorPosition, RequestUrlResponse, TFile, Vault, App, Notice, normalizePath } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import type { GPTImageOCRSettings } from "../types";
-import { FRIENDLY_PROVIDER_NAMES } from "../types";
+import { FRIENDLY_PROVIDER_NAMES, CollectedImage, PreparedImage, OCRProvider } from "../types";
+import { OpenAIProvider } from "../providers/openai-provider";
+import { GeminiProvider } from "../providers/gemini-provider";
+
+/**
+ * Constructs an API request for OCR jobs
+ */
+export async function submitOCRRequest(
+  images: PreparedImage[],
+  prompt: string,
+  providerId: string,
+  modelId: string
+): Promise<string> {
+  let provider: OCRProvider;
+
+  switch (providerId) {
+    case "openai":
+      provider = new OpenAIProvider("your-api-key", modelId);
+      break;
+    case "gemini":
+      provider = new GeminiProvider("your-api-key", modelId);
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${providerId}`);
+  }
+
+  if (provider.process) {
+    return await provider.process(images, prompt);
+  } else {
+    const result = await provider.extractTextFromBase64(images[0].base64);
+    return result ?? "";
+  }
+}
+
+/**
+* Resolves a list of markdown-style image links to CollectedImage[] format
+*/
+export async function collectImageReferences(
+  imageLinks: string[],
+  vault: Vault
+): Promise<CollectedImage[]> {
+  const collected: CollectedImage[] = [];
+
+  for (const link of imageLinks) {
+    const trimmed = link.trim();
+
+    // Check if it's an external image
+    if (/^(https?|data):/.test(trimmed)) {
+      collected.push({
+        source: trimmed,
+        isExternal: true,
+      });
+      continue;
+    }
+
+    // Try to resolve to a local vault file
+    try {
+      const normalized = normalizePath(trimmed);
+      const file = vault.getAbstractFileByPath(normalized);
+
+      if (file instanceof TFile && file.extension.match(/png|jpe?g|webp|gif|bmp|svg/i)) {
+        collected.push({
+          source: trimmed,
+          file,
+          isExternal: false,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to resolve image link:", trimmed, e);
+    }
+  }
+
+  return collected;
+}
+
+/**
+ * Convert CollectedImage to PreparedImage
+ */
+
+export async function prepareImagePayload(
+  img: CollectedImage,
+  vault: Vault
+): Promise<PreparedImage | null> {
+  try {
+    let arrayBuffer: ArrayBuffer | null;
+    let name: string;
+    let mime: string;
+
+    if (img.isExternal) {
+      arrayBuffer = await fetchExternalImageAsArrayBuffer(img.source);
+      if (!arrayBuffer) return null;
+
+      // Extract name from URL or fallback
+      const urlParts = img.source.split("/");
+      name = decodeURIComponent(urlParts[urlParts.length - 1]) || "image";
+      mime = getImageMimeType(name);
+    } else {
+      if (!img.file) return null;
+
+      arrayBuffer = await vault.readBinary(img.file);
+      name = img.file.name;
+      mime = getImageMimeType(name);
+    }
+
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    return {
+      name,
+      base64,
+      mime,
+      size: arrayBuffer.byteLength,
+      source: img.source,
+    };
+  } catch (e) {
+    console.error("Failed to prepare image:", img.source, e);
+    return null;
+  }
+}
 
 /**
  * Assigns friendly names to OCR providers based on user settings.
@@ -303,4 +419,37 @@ export async function selectImageFile(): Promise<File | null> {
     };
     input.click();
   });
+}
+
+/**
+ * Prompts the user to select a folder containing image files and returns a file list.
+ */
+export async function selectFolder(): Promise<FileList | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    (input as any).webkitdirectory = true;
+    input.onchange = () => {
+      resolve(input.files || null);
+    };
+    input.click();
+  });
+}
+
+
+/**
+  * Get the mime type of an image based on its file extension.
+  */
+export function getImageMimeType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png": return "image/png";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "webp": return "image/webp";
+    case "gif": return "image/gif";
+    case "bmp": return "image/bmp";
+    case "svg": return "image/svg+xml";
+    default: return "application/octet-stream";
+  }
 }

@@ -6,6 +6,7 @@
 import { OCRProvider, OpenAIPayload, OllamaPayload, LmstudioPayload, DEFAULT_PROMPT_TEXT } from "../types";
 import { requestUrl } from "obsidian";
 import { parseJsonResponse } from "../utils/helpers";
+import type { PreparedImage } from "../types";
 
 /**
  * Handles OCR requests to OpenAI-compatible, Ollama, or LMStudio endpoints.
@@ -26,20 +27,22 @@ export class OpenAIProvider implements OCRProvider {
     this.name = nameOverride ?? model;
   }
 
-  async extractTextFromBase64(image: string): Promise<string | null> {
+  async process(images: PreparedImage[], prompt: string): Promise<string> {
     let payload: OpenAIPayload | OllamaPayload | LmstudioPayload;
     let endpoint = this.endpoint;
 
+    const base64Images = images.map(img =>
+      img.base64.replace(/^data:image\/\w+;base64,/, "")
+    );
+
     if (this.provider === "ollama") {
-      // Remove any data: prefix for base64 image
-      const cleanImage = image.replace(/^data:image\/\w+;base64,/, "");
       payload = {
         model: this.model,
         messages: [
           {
             role: "user",
-            content: this.prompt,
-            images: [cleanImage],
+            content: prompt,
+            images: base64Images,
           },
         ],
         max_tokens: 1024,
@@ -52,13 +55,20 @@ export class OpenAIProvider implements OCRProvider {
         messages: [
           {
             role: "system",
-            content: "You are an AI assistant that analyzes images."
+            content: [
+              { type: "text", text: "You are an AI assistant that analyzes images." }
+            ]
           },
           {
             role: "user",
             content: [
-              { type: "text", text: this.prompt, },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }
+              { type: "text", text: prompt },
+              ...images.map((img) => ({
+                type: "image_url",
+                image_url: {
+                  url: `data:${img.mime};base64,${img.base64}`,
+                },
+              })),
             ]
           }
         ],
@@ -72,13 +82,15 @@ export class OpenAIProvider implements OCRProvider {
           {
             role: "user",
             content: [
-              {
+              ...images.map((img) => ({
                 type: "image_url",
-                image_url: { url: `data:image/jpeg;base64,${image}` },
-              },
+                image_url: {
+                  url: `data:${img.mime};base64,${img.base64}`,
+                },
+              })),
               {
                 type: "text",
-                text: this.prompt,
+                text: prompt,
               },
             ],
           },
@@ -102,24 +114,36 @@ export class OpenAIProvider implements OCRProvider {
         body: JSON.stringify(payload),
       });
 
-      if (this.provider === "ollama") {
-        // The response is { message: { role, content } }
-        const data = parseJsonResponse(response, d => !!d.message?.content);
-        const content = data.message?.content?.trim();
-        if (content) return content;
-        console.warn("Ollama response did not contain expected text:", data);
-        return null;
-      } else {
-        // OpenAI style response
-        const data = parseJsonResponse(response, d => Array.isArray(d.choices));
-        const content = data.choices?.[0]?.message?.content?.trim();
-        if (content) return content;
-        console.warn(`${this.provider} response did not contain expected text:`, data);
-        return null;
-      }
+      const data = parseJsonResponse(response, (d) =>
+        this.provider === "ollama"
+          ? !!d.message?.content
+          : Array.isArray(d.choices)
+      );
+
+      const content =
+        this.provider === "ollama"
+          ? data.message?.content?.trim()
+          : data.choices?.[0]?.message?.content?.trim();
+
+      if (content) return content;
+
+      console.warn(`${this.provider} response did not contain expected text:`, data);
+      return "";
     } catch (err) {
       console.error(`${this.provider} fetch error:`, err);
-      return null;
+      return "";
     }
   }
+
+  async extractTextFromBase64(image: string): Promise<string | null> {
+    const prepared: PreparedImage = {
+      name: "image.jpg",
+      base64: image,
+      mime: "image/jpeg",
+      size: image.length * 0.75,
+      source: "inline",
+    };
+    return await this.process([prepared], this.prompt);
+  }
+
 }
