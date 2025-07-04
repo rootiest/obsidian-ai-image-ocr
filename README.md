@@ -102,7 +102,6 @@ compared to traditional tools such as Tesseract.
 - Bring-your-own endpoint support for any service that follows the
   OpenAI-compatible Chat Completions API
 - Allows integration with services like:
-
   - [DeepInfra](https://deepinfra.com)
   - [Fireworks.ai](https://fireworks.ai)
   - [Together.ai](https://together.ai)
@@ -258,7 +257,7 @@ in output templates:
 
 - **Model and Provider names**: Use `{{model}}` or `{{provider}}`
   in output templates.
-- **Image metadata**: Use image metadate in output templates, such as:
+- **Image metadata**: Use image metadata in output templates, such as:
   - `{{image.filename}}` for the original filename
   - `{{image.path}}` for the full path of the image
   - `{{image.size}}` for the image size in bytes
