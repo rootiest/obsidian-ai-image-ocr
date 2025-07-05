@@ -262,6 +262,8 @@ in output templates:
   - `{{image.path}}` for the full path of the image
   - `{{image.size}}` for the image size in bytes
   - `{{image.dimensions}}` for the image dimensions (e.g., "1920x1080")
+  - `{{image.width}}` for the image width
+  - `{{image.height}}` for the image height
   - `{{image.created}}` for the image file creation date
   - `{{image.modified}}` for the image file last modified date
 - **Note properties**: When outputting to a note, use:
