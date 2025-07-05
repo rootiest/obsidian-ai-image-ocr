@@ -319,7 +319,8 @@ export function applyFormatting(
       };
       const imgHeader = formatTemplate(plugin.settings.batchImageHeaderTemplate || "", imgContext);
       const imgFooter = formatTemplate(plugin.settings.batchImageFooterTemplate || "", imgContext);
-      return [imgHeader, imgText, imgFooter].filter(Boolean).join("");
+      // Add a newline before imgFooter if imgFooter is not empty
+      return [imgHeader, imgText, imgFooter ? "\n" + imgFooter : ""].filter(Boolean).join("");
     });
 
     return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("");
@@ -328,7 +329,7 @@ export function applyFormatting(
   // Single image mode
   const header = formatTemplate(plugin.settings.headerTemplate || "", context);
   const footer = formatTemplate(plugin.settings.footerTemplate || "", context);
-  return [header, content as string, footer].filter(Boolean).join("");
+  return [header, content as string, footer ? "\n" + footer : ""].filter(Boolean).join("");
 }
 
 /**
@@ -340,6 +341,11 @@ export async function handleExtractedContent(
   editor: Editor | null,
   context: Record<string, any> = {}
 ) {
+  // Fallback to active editor if not provided
+  if (!editor) {
+    editor = plugin.app.workspace.activeEditor?.editor ?? null;
+  }
+
   // Use the new formatting function
   const finalContent = applyFormatting(plugin, content, context);
 
