@@ -242,16 +242,16 @@ export function applyFormatting(
       };
       const imgHeader = formatTemplate(plugin.settings.batchImageHeaderTemplate || "", imgContext);
       const imgFooter = formatTemplate(plugin.settings.batchImageFooterTemplate || "", imgContext);
-      return [imgHeader, imgText, imgFooter].filter(Boolean).join("\n\n");
+      return [imgHeader, imgText, imgFooter].filter(Boolean).join("");
     });
 
-    return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("\n\n");
+    return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("");
   }
 
   // Single image mode
   const header = formatTemplate(plugin.settings.headerTemplate || "", context);
   const footer = formatTemplate(plugin.settings.footerTemplate || "", context);
-  return [header, content as string, footer].filter(Boolean).join("\n\n");
+  return [header, content as string, footer].filter(Boolean).join("");
 }
 
 /**
