@@ -158,6 +158,7 @@ export default class GPTImageOCRPlugin extends Plugin {
       },
     });
 
+    // --- Batch Image Folder OCR ---
     this.addCommand({
       id: "extract-text-from-image-folder",
       name: "Extract Text from Image Folder",
