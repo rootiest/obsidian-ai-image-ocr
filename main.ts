@@ -10,6 +10,7 @@ import {
   GPTImageOCRSettings,
   DEFAULT_SETTINGS,
   DEFAULT_PROMPT_TEXT,
+  DEFAULT_BATCH_PROMPT_TEXT,
   OCRProvider,
   PreparedImage,
 } from "./types";
@@ -328,7 +329,7 @@ For each image, wrap the response using the following format:
 
 Repeat this for each image.
 `;
-    const userPrompt = this.settings.batchCustomPrompt?.trim() || DEFAULT_PROMPT_TEXT;
+    const userPrompt = this.settings.batchCustomPrompt?.trim() || DEFAULT_BATCH_PROMPT_TEXT;
     const batchPrompt = `${userPrompt}\n${batchFormatInstruction}`;
 
     try {

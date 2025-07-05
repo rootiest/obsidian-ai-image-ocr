@@ -55,6 +55,9 @@ export interface GPTImageOCRSettings {
 export const DEFAULT_PROMPT_TEXT =
   "Extract only the raw text from this image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format. Do not put a markdown codeblock around the returned text.";
 
+export const DEFAULT_BATCH_PROMPT_TEXT =
+  "Extract only the raw text from each image. Do not add commentary or explanations. Do not prepend anything. Return only the transcribed text in markdown format for each image. Do not put a markdown codeblock around the returned text.";
+
 export const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], string> = {
   "openai": "OpenAI GPT-4o",
   "openai-mini": "OpenAI GPT-4o Mini",
