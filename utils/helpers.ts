@@ -3,10 +3,129 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { Editor, EditorPosition, RequestUrlResponse, TFile, App, Notice } from "obsidian";
+import { Editor, EditorPosition, RequestUrlResponse, TFile, Vault, App, Notice, normalizePath } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import type { GPTImageOCRSettings } from "../types";
-import { FRIENDLY_PROVIDER_NAMES } from "../types";
+import { FRIENDLY_PROVIDER_NAMES, FRIENDLY_MODEL_NAMES, CollectedImage, PreparedImage, OCRProvider } from "../types";
+import { OpenAIProvider } from "../providers/openai-provider";
+import { GeminiProvider } from "../providers/gemini-provider";
+
+/**
+ * Constructs an API request for OCR jobs
+ */
+export async function submitOCRRequest(
+  images: PreparedImage[],
+  prompt: string,
+  providerId: string,
+  modelId: string
+): Promise<string> {
+  let provider: OCRProvider;
+
+  switch (providerId) {
+    case "openai":
+      provider = new OpenAIProvider("your-api-key", modelId);
+      break;
+    case "gemini":
+      provider = new GeminiProvider("your-api-key", modelId);
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${providerId}`);
+  }
+
+  if (provider.process) {
+    return await provider.process(images, prompt);
+  } else {
+    const result = await provider.extractTextFromBase64(images[0].base64);
+    return result ?? "";
+  }
+}
+
+/**
+* Resolves a list of markdown-style image links to CollectedImage[] format
+*/
+export async function collectImageReferences(
+  imageLinks: string[],
+  vault: Vault
+): Promise<CollectedImage[]> {
+  const collected: CollectedImage[] = [];
+
+  for (const link of imageLinks) {
+    const trimmed = link.trim();
+
+    // Check if it's an external image
+    if (/^(https?|data):/.test(trimmed)) {
+      collected.push({
+        source: trimmed,
+        isExternal: true,
+      });
+      continue;
+    }
+
+    // Try to resolve to a local vault file
+    try {
+      const normalized = normalizePath(trimmed);
+      const file = vault.getAbstractFileByPath(normalized);
+
+      if (file instanceof TFile && file.extension.match(/png|jpe?g|webp|gif|bmp|svg/i)) {
+        collected.push({
+          source: trimmed,
+          file,
+          isExternal: false,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to resolve image link:", trimmed, e);
+    }
+  }
+
+  return collected;
+}
+
+/**
+ * Convert CollectedImage to PreparedImage
+ */
+
+export async function prepareImagePayload(
+  img: CollectedImage,
+  vault: Vault
+): Promise<PreparedImage | null> {
+  try {
+    let arrayBuffer: ArrayBuffer | null;
+    let name: string;
+    let mime: string;
+
+  if (img.isExternal) {
+      arrayBuffer = await fetchExternalImageAsArrayBuffer(img.source);
+      if (!arrayBuffer) return null;
+
+      // Extract name from URL or fallback
+      const urlParts = img.source.split("/");
+      name = decodeURIComponent(urlParts[urlParts.length - 1]) || "image";
+      mime = getImageMimeType(name);
+    } else {
+      if (!img.file) return null;
+
+      arrayBuffer = await vault.readBinary(img.file);
+      name = img.file.name;
+      mime = getImageMimeType(name);
+    }
+
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
+    return {
+      name,
+      base64,
+      mime,
+      size: arrayBuffer.byteLength,
+      width: dims?.width,
+      height: dims?.height,
+      source: img.source,
+    };
+  } catch (e) {
+    console.error("Failed to prepare image:", img.source, e);
+    return null;
+  }
+}
 
 /**
  * Assigns friendly names to OCR providers based on user settings.
@@ -74,31 +193,179 @@ export function parseJsonResponse(
 }
 
 /**
+ * Replaces {{placeholders}} in a template string with values from a context object.
+ * Supports {{date:FORMAT}} for moment.js formatting and any key in the context object.
+ * Example: "Extracted at {{date:YYYY-MM-DD}} by {{user}}" with { user: "Alice" }
+ */
+export function formatTemplate(template: string, context: Record<string, any> = {}): string {
+  const getValue = (path: string): any => {
+    const parts = path.split(".");
+    let value: any = context;
+    for (const part of parts) {
+      if (value && part in value) {
+        value = value[part];
+      } else {
+        value = undefined;
+        break;
+      }
+    }
+    if (value !== undefined) return value;
+
+    // Derived / legacy mappings
+    switch (path) {
+      case "model.id":
+        return context.model?.id ?? context.modelId ?? context.model ?? "";
+      case "model.name":
+        return context.model?.name ?? context.modelName ?? context.model ?? "";
+      case "provider.name":
+        return context.provider?.name ?? context.providerName ?? "";
+      case "provider.id":
+        return context.provider?.id ?? context.providerId ?? context.provider ?? "";
+      case "provider.type":
+        return context.provider?.type ?? context.providerType ?? "";
+      case "image.filename":
+        return context.image?.filename ?? context.image?.name ?? "";
+      case "image.name": {
+        const fname = context.image?.filename ?? context.image?.name ?? "";
+        return fname.replace(/\.[^.]*$/, "");
+      }
+      case "image.extension": {
+        const fname = context.image?.filename ?? context.image?.name ?? "";
+        const m = fname.match(/\.([^.]+)$/);
+        return m ? m[1] : "";
+      }
+      case "image.path":
+        return context.image?.path ?? context.image?.source ?? "";
+      case "image.size":
+        return context.image?.size ?? "";
+      case "image.dimensions":
+        if (context.image?.width && context.image?.height) {
+          return `${context.image.width}x${context.image.height}`;
+        }
+        return "";
+      case "image.width":
+        return context.image?.width ?? "";
+      case "image.height":
+        return context.image?.height ?? "";
+      case "image.created":
+        return context.image?.created ?? "";
+      case "image.modified":
+        return context.image?.modified ?? "";
+      case "image.camera.make":
+        return context.image?.camera?.make ?? "";
+      case "image.camera.model":
+        return context.image?.camera?.model ?? "";
+      case "image.lens.model":
+        return context.image?.lens?.model ?? "";
+      case "image.iso":
+        return context.image?.iso ?? "";
+      case "image.exposure":
+        return context.image?.exposure ?? "";
+      case "image.aperture":
+        return context.image?.aperture ?? "";
+      case "image.focalLength":
+        return context.image?.focalLength ?? "";
+      case "image.orientation":
+        return context.image?.orientation ?? "";
+      case "image.gps.latitude":
+        return context.image?.gps?.latitude ?? "";
+      case "image.gps.longitude":
+        return context.image?.gps?.longitude ?? "";
+      case "image.gps.altitude":
+        return context.image?.gps?.altitude ?? "";
+      case "embed.altText":
+        return context.embed?.altText ?? "";
+      case "embed.url":
+        return context.embed?.path ?? context.embed?.url ?? "";
+      default:
+        return "";
+    }
+  };
+
+  return template.replace(/{{(.*?)}}/g, (_, expr) => {
+    expr = expr.trim();
+    if (expr.startsWith("date:")) {
+      const fmt = expr.slice(5).trim();
+      return window.moment ? window.moment().format(fmt) : "";
+    }
+    if (window.moment && /^[YMDHms\-:/ ]+$/.test(expr)) {
+      return window.moment().format(expr);
+    }
+    const val = getValue(expr);
+    return val != null ? String(val) : "";
+  });
+}
+
+/**
+ * Applies all relevant templates (header, footer, per-image, batch) to the OCR result.
+ * @param plugin The plugin instance (for settings)
+ * @param content The OCR result: string for single, string[] for batch
+ * @param context The formatting context object
+ * @returns The final formatted string
+ */
+export function applyFormatting(
+  plugin: GPTImageOCRPlugin,
+  content: string | string[],
+  context: Record<string, any>
+): string {
+  // Batch mode: context.images is array, content is string[]
+  if (Array.isArray(context.images) && Array.isArray(content)) {
+    const batchHeader = formatTemplate(plugin.settings.batchHeaderTemplate || "", context);
+    const batchFooter = formatTemplate(plugin.settings.batchFooterTemplate || "", context);
+
+    // For each image, apply image header/footer
+    const formattedImages = content.map((imgText, i) => {
+      const imgContext = {
+        ...context,
+        image: context.images[i],
+        imageIndex: i + 1,
+        imageTotal: context.images.length,
+      };
+      const imgHeader = formatTemplate(plugin.settings.batchImageHeaderTemplate || "", imgContext);
+      const imgFooter = formatTemplate(plugin.settings.batchImageFooterTemplate || "", imgContext);
+      // Add a newline before imgFooter if imgFooter is not empty
+      return [imgHeader, imgText, imgFooter ? "\n" + imgFooter : ""].filter(Boolean).join("");
+    });
+
+    return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("");
+  }
+
+  // Single image mode
+  const header = formatTemplate(plugin.settings.headerTemplate || "", context);
+  const footer = formatTemplate(plugin.settings.footerTemplate || "", context);
+  return [header, content as string, footer ? "\n" + footer : ""].filter(Boolean).join("");
+}
+
+/**
  * Handles inserting or saving extracted OCR content based on user settings.
  */
 export async function handleExtractedContent(
   plugin: GPTImageOCRPlugin,
-  content: string,
+  content: string | string[],
   editor: Editor | null,
+  context: Record<string, any> = {}
 ) {
-  const moment = window.moment;
-
-  // Format header (if provided)
-  let header = plugin.settings.headerTemplate || "";
-  if (header.trim()) {
-    header = header.replace(/{{(.*?)}}/g, (_, fmt) =>
-      moment().format(fmt.trim()),
-    );
-    content = header + "\n\n" + content;
+  // Fallback to active editor if not provided
+  if (!editor) {
+    editor = plugin.app.workspace.activeEditor?.editor ?? null;
   }
 
-  if (!plugin.settings.outputToNewNote) {
+  // Use the new formatting function
+  const finalContent = applyFormatting(plugin, content, context);
+
+  const isBatch = Array.isArray(context.images);
+
+  const outputToNewNote = isBatch
+    ? plugin.settings.batchOutputToNewNote
+    : plugin.settings.outputToNewNote;
+
+  if (!outputToNewNote) {
     if (editor) {
       const cursor = editor.getCursor();
-      editor.replaceSelection(content);
+      editor.replaceSelection(finalContent);
 
       const newPos = editor.offsetToPos(
-        editor.posToOffset(cursor) + content.length
+        editor.posToOffset(cursor) + finalContent.length
       );
       editor.setCursor(newPos);
 
@@ -109,15 +376,14 @@ export async function handleExtractedContent(
     return;
   }
 
-  const name = plugin.settings.noteNameTemplate.replace(
-    /{{(.*?)}}/g,
-    (_, fmt) => moment().format(fmt.trim()),
+  const name = formatTemplate(
+    isBatch ? plugin.settings.batchNoteNameTemplate : plugin.settings.noteNameTemplate,
+    context
   );
-
-  const folder = plugin.settings.noteFolderPath
-    .replace(/{{(.*?)}}/g, (_, fmt) => moment().format(fmt.trim()))
-    .trim();
-
+  const folder = formatTemplate(
+    isBatch ? plugin.settings.batchNoteFolderPath : plugin.settings.noteFolderPath,
+    context
+  ).trim();
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
 
   // Ensure folder exists
@@ -136,10 +402,14 @@ export async function handleExtractedContent(
 
   let file = plugin.app.vault.getAbstractFileByPath(path);
 
+  const appendIfExists = isBatch
+    ? plugin.settings.batchAppendIfExists
+    : plugin.settings.appendIfExists;
+
   if (file instanceof TFile) {
-    if (plugin.settings.appendIfExists) {
+    if (appendIfExists) {
       const existing = await plugin.app.vault.read(file);
-      const updatedContent = existing + "\n\n" + content;
+      const updatedContent = existing + "\n\n" + finalContent;
 
       await plugin.app.vault.modify(file, updatedContent);
       const leaf = plugin.app.workspace.getLeaf(true);
@@ -167,11 +437,11 @@ export async function handleExtractedContent(
         counter++;
       }
 
-      file = await plugin.app.vault.create(uniquePath, content);
+      file = await plugin.app.vault.create(uniquePath, finalContent);
     }
   } else {
     try {
-      file = await plugin.app.vault.create(path, content);
+      file = await plugin.app.vault.create(path, finalContent);
     } catch (err) {
       new Notice(`Failed to create note at "${path}".`);
       console.error(err);
@@ -198,13 +468,14 @@ export function findRelevantImageEmbed(editor: Editor): {
   link: string;
   isExternal: boolean;
   embedType: "internal" | "external";
+  embedText: string;
 } | null {
   // 1. Check selection
   const sel = editor.getSelection();
   let match = sel.match(/!\[\[(.+?)\]\]/);
   if (match) {
     const link = match[1].split("|")[0].trim();
-    return { link, isExternal: false, embedType: "internal" };
+    return { link, isExternal: false, embedType: "internal", embedText: match[0] };
   }
   match = sel.match(/!\[.*?\]\((.+?)\)/);
   if (match) {
@@ -213,6 +484,7 @@ export function findRelevantImageEmbed(editor: Editor): {
       link,
       isExternal: /^https?:\/\//i.test(link),
       embedType: "external",
+      embedText: match[0],
     };
   }
 
@@ -222,7 +494,7 @@ export function findRelevantImageEmbed(editor: Editor): {
     let embedMatch = line.match(/!\[\[(.+?)\]\]/);
     if (embedMatch) {
       const link = embedMatch[1].split("|")[0].trim();
-      return { link, isExternal: false, embedType: "internal" };
+      return { link, isExternal: false, embedType: "internal", embedText: embedMatch[0] };
     }
     embedMatch = line.match(/!\[.*?\]\((.+?)\)/);
     if (embedMatch) {
@@ -231,6 +503,7 @@ export function findRelevantImageEmbed(editor: Editor): {
         link,
         isExternal: /^https?:\/\//i.test(link),
         embedType: "external",
+        embedText: embedMatch[0],
       };
     }
   }
@@ -289,6 +562,26 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+export async function getImageDimensionsFromArrayBuffer(
+  buffer: ArrayBuffer,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const dims = { width: img.width, height: img.height };
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 /**
  * Prompts the user to select an image file and returns it as a File object.
  */
@@ -303,4 +596,162 @@ export async function selectImageFile(): Promise<File | null> {
     };
     input.click();
   });
+}
+
+/**
+ * Prompts the user to select a folder containing image files and returns a file list.
+ */
+export async function selectFolder(): Promise<FileList | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    (input as any).webkitdirectory = true;
+    input.onchange = () => {
+      resolve(input.files || null);
+    };
+    input.click();
+  });
+}
+
+
+/**
+  * Get the mime type of an image based on its file extension.
+  */
+export function getImageMimeType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png": return "image/png";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "webp": return "image/webp";
+    case "gif": return "image/gif";
+    case "bmp": return "image/bmp";
+    case "svg": return "image/svg+xml";
+    default: return "application/octet-stream";
+  }
+}
+
+/**
+ * Returns the provider type based on the provider ID.
+ * "gemini" for Gemini provider IDs, "openai" for OpenAI provider IDs.
+ */
+export function getProviderType(providerId: string): "gemini" | "openai" {
+  return providerId.startsWith("gemini") ? "gemini" : "openai";
+}
+
+/**
+ * Builds the OCR context for API requests.
+ */
+export function buildOCRContext({
+  providerId,
+  providerName,
+  providerType,
+  modelId,
+  modelName,
+  prompt,
+  images,
+  singleImage,
+}: {
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  modelId: string;
+  modelName: string;
+  prompt: string;
+  images?: Array<{ name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number, created?: string; modified?: string; altText?: string; gps?: { latitude?: number; longitude?: number; altitude?: number } }>;
+  singleImage?: { name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number, created?: string; modified?: string;  altText?: string;  gps?: { latitude?: number; longitude?: number; altitude?: number } };
+}) {
+  const base = {
+    provider: {
+      id: providerId,
+      name: providerName,
+      type: providerType,
+    },
+    model: {
+      id: modelId,
+      name: modelName,
+    },
+    prompt,
+  };
+
+  if (images && images.length > 1) {
+    return {
+      ...base,
+      images: images.map((img, i) => ({
+        name: img.name.replace(/\.[^.]*$/, ""),
+        extension: img.name.split('.').pop() || "",
+        path: img.path,
+        size: img.size,
+        mime: img.mime,
+        width: img.width,
+        height: img.height,
+        index: i + 1,
+        total: images.length,
+      })),
+    };
+  } else if (singleImage || (images && images.length === 1)) {
+    const img = singleImage || images![0];
+    return {
+      ...base,
+      image: {
+        name: img.name.replace(/\.[^.]*$/, ""),
+        extension: img.name.split('.').pop() || "",
+        path: img.path,
+        size: img.size,
+        mime: img.mime,
+        width: img.width,
+        height: img.height,
+        index: 1,
+        total: 1,
+      },
+    };
+  } else {
+    return base;
+  }
+}
+
+export function parseEmbedInfo(embedMarkdown: string, link: string) {
+  // Try to extract alt text and URL from markdown image syntax
+  // e.g. ![alt text](url)
+  let altText = "";
+  let url = link;
+
+  const mdMatch = embedMarkdown.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+  if (mdMatch) {
+    altText = mdMatch[1];
+    url = mdMatch[2];
+  } else {
+    // Try Obsidian-style embed: ![[filename|alt]]
+    const obsMatch = embedMarkdown.match(/!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/);
+    if (obsMatch) {
+      url = obsMatch[1];
+      altText = obsMatch[2] || "";
+    }
+  }
+
+  // Extract extension
+  let extension = "";
+  let name = url;
+  const lastSlash = url.lastIndexOf("/");
+  const lastDot = url.lastIndexOf(".");
+  if (lastDot > -1 && lastDot > lastSlash) {
+    extension = url.slice(lastDot + 1);
+    name = url.slice(lastSlash + 1, lastDot);
+  } else if (lastSlash > -1) {
+    name = url.slice(lastSlash + 1);
+  } else if (lastDot > -1) {
+    name = url.slice(0, lastDot);
+    extension = url.slice(lastDot + 1);
+  }
+
+  return {
+    name,
+    extension,
+    path: url,
+    altText,
+  };
+}
+
+export function templateHasImagePlaceholder(template: string): boolean {
+  return /\{\{\s*image\.[^}]+\s*\}\}/.test(template);
 }

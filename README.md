@@ -130,24 +130,44 @@ compared to traditional tools such as Tesseract.
   - Replace image embed
   - Insert at cursor
   - Create or append to another note
-- Optional header template with dynamic timestamp formatting
-- File/folder naming templates using [moment.js](https://momentjs.com/docs/#/displaying/format/)
-- Extract from embedded images or via OS-native file picker
+- Header and footer template creation with `{{placeholder}}` support
+- File/folder naming template creation with `{{placeholder}}` support
+- Extract from embedded images or via OS-native file/folder pickers
 - Built-in CORS proxy fallback for external images
 
+> [!NOTE]
+> Support for `{{placeholder}}` options is still being tested.
+> Unexpected behavior may occur.  
+> Refer to the
+> [Wiki](https://github.com/rootiest/obsidian-ai-image-ocr/wiki/Templating)
+> for available placeholders.
+> Please report any placeholder issues or suggestions on GitHub.
+
 ## Installation
+
+### Install via Obsidian Community Plugin Browser
+
+> [!NOTE]
+> This option is not yet available.
+
+1. Open Obsidian settings.
+2. Under "Community plugins", ensure "Safe mode" is disabled.
+3. Click "Browse" to open the Community Plugin Browser.
+4. Search for "AI Image OCR".
+5. Click "Install" to download the plugin.
 
 ### Install via BRAT
 
 If you have the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin installed,
 you can install this plugin using the BRAT plugin manager:
 
-1. Click `Add beta plugin`.
-2. Enter `https://github.com/rootiest/obsidian-ai-image-ocr`
+1. Open the BRAT plugin settings.
+2. Click `Add beta plugin`.
+3. Enter `https://github.com/rootiest/obsidian-ai-image-ocr`
    in the `Repository URL` field.
-3. (Optionally) Check the `Enable after installing the plugin`
+4. (Optionally) Check the `Enable after installing the plugin`
    checkbox to enable the plugin immediately after installation.
-4. Click `Add plugin`
+5. Click `Add plugin`
 
 ### Manual Installation
 
@@ -163,33 +183,21 @@ and extract to your plugins directory.
 
 ## Configuration
 
-**These settings are required:**
-
 - Choose a model provider (`OpenAI`, `Gemini`, `Ollama`, etc.)
 - Select a model ID (e.g. `gpt-4o`, `llava:13b`, etc.)
 - If using a cloud model, enter the corresponding API key
 
-**Optional settings include:**
+Several addition optional configuration option are available with which
+you may customize the output behavior.
 
-- **Header Template**: Markdown inserted before extracted text.  
-  Can use `{{YYYY-MM-DD HH:mm:ss}}` for timestamps.
-- **Output to Another Note**: Extracted text can be routed to a new note.
-- **Folder Path**: Where to create the new note (if enabled).
-- **Filename Template**: Can include dynamic date/time formatting.
-- **Append or Overwrite**: Controls whether to reuse or recreate notes
-  with the same name.
+`{{placeholder}}` options are
+[detailed in the wiki](https://github.com/rootiest/obsidian-ai-image-ocr/wiki/Templating).
 
 ## Usage
 
-### Output Behavior
-
-- Header template (if set) will be inserted before the extracted text.
-- Output will go to a new note or current note depending on settings.
-- If extracting from an embedded image, the embed will be replaced.
-
 ### Open An Image For Extraction
 
-1. Use the command palette (`Ctrl+P`) and search for "Extract Text from Image".
+1. Use the command palette (`Ctrl+P`) and search for "Extract text from image".
 2. Select an image file.
 3. Text will be extracted and inserted per your configuration.
 
@@ -199,6 +207,13 @@ and extract to your plugins directory.
 2. Use the "Extract Text from Embedded Image" command.
 3. The nearest image above the cursor will be used as the source.
 4. The embed will be replaced by the extracted text.
+
+### Select A Folder For Extraction
+
+1. Use the command palette (`Ctrl+P`) and search for
+   "Extract text from image folder".
+2. Select a directory which contains images.
+3. Text will be extracted from each image and inserted per your configuration.
 
 ## Notes
 
@@ -231,57 +246,15 @@ and extract to your plugins directory.
 The following features are under consideration
 for future releases of the plugin:
 
-### Batch Image Processing
+### Extend Placeholder Support
 
-- **Extract from all embedded images** in a note at once.
-- **Process entire folders** of image files (e.g., screenshots, scans).
-- **Configurable output** options for batch mode:
-  - Combine all results into the active note.
-  - Create a new note for each image.
-  - Optionally include image filenames as headings or titles.
-  - Separate output configuration for single and batched extractions.
+- Add `created`/`modified` placeholders for images.
+  - Support  moment.js formatting of image placeholders.
+- Add other `{{placeholder}}` options.
 
-### Multi-image Request Batching
+### Reverse Placeholder Support
 
-When performing batched image processing:
-
-- **Send multiple images in a single API request**
-  to reduce latency and API overhead.
-- Use a defined **separator string** between images'
-  OCR results for reliable parsing into output.
-- Improve efficiency and lower cost when working with high-volume image sets.
-
-### Enhanced Output Templates
-
-Use the following dynamic properties in addition to date-time
-in output templates:
-
-- **Model and Provider names**: Use `{{model}}` or `{{provider}}`
-  in output templates.
-- **Image metadata**: Use image metadate in output templates, such as:
-  - `{{image.filename}}` for the original filename
-  - `{{image.path}}` for the full path of the image
-  - `{{image.size}}` for the image size in bytes
-  - `{{image.dimensions}}` for the image dimensions (e.g., "1920x1080")
-  - `{{image.created}}` for the image file creation date
-  - `{{image.modified}}` for the image file last modified date
-- **Note properties**: When outputting to a note, use:
-  - `{{note.title}}` for the note title
-  - `{{note.path}}` for the note path
-  - `{{note.created}}` for the note creation date
-  - `{{note.modified}}` for the note last modified date
-  - `{{note.frontmatter.key}}` for any frontmatter key-value pairs
-- **Other metadata**:
-  Any other relevant metadata that can be extracted from
-  the image file or note.
-
-### Other Potential Enhancements
-
-- **Custom provider name**: Allow custom naming when using custom provider.
-- **Custom model name**: Allow setting a custom name for any model used.
-- **Preview before extract**: Show a list of matched images before running OCR.
-- **Hide or obfuscate API keys**: Hide or obfuscate API keys in settings.
-- **Support for more OCR models**, including local or offline alternatives.
+- Support using a keyword to indicate where extracted text should be place in a note.
 
 > [!NOTE]
 > These goals are exploratory and may evolve based on user feedback and
