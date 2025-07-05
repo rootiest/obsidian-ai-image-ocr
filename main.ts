@@ -24,6 +24,7 @@ import {
   resolveInternalImagePath,
   fetchExternalImageAsArrayBuffer,
   arrayBufferToBase64,
+  getImageDimensionsFromArrayBuffer,
   selectImageFile,
   selectFolder,
   getProviderType,
@@ -55,6 +56,7 @@ export default class GPTImageOCRPlugin extends Plugin {
         }
         const arrayBuffer = await file.arrayBuffer();
         const base64 = arrayBufferToBase64(arrayBuffer);
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
 
         const provider = this.getProvider();
         const providerId = this.settings.provider;
@@ -95,6 +97,8 @@ export default class GPTImageOCRPlugin extends Plugin {
                 path: file.name,
                 size: file.size,
                 mime,
+                width: dims?.width,
+                height: dims?.height,
               },
             });
 
@@ -149,6 +153,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           return;
         }
         const base64 = arrayBufferToBase64(arrayBuffer);
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
 
         const provider = this.getProvider();
         const providerId = this.settings.provider;
@@ -193,6 +198,8 @@ export default class GPTImageOCRPlugin extends Plugin {
                 path: embedInfo.path,
                 size: arrayBuffer?.byteLength ?? 0,
                 mime,
+                width: dims?.width,
+                height: dims?.height,
               },
             }) as any;
             // Add embed info to context for downstream consumers if needed
@@ -358,11 +365,14 @@ export default class GPTImageOCRPlugin extends Plugin {
     const prepared = await Promise.all(
       imageFiles.map(async (file): Promise<PreparedImage> => {
         const arrayBuffer = await file.arrayBuffer();
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
         return {
           name: file.name,
           base64: arrayBufferToBase64(arrayBuffer),
           mime: file.type,
           size: file.size,
+          width: dims?.width,
+          height: dims?.height,
           source: file.name,
         };
       })
@@ -438,6 +448,8 @@ Repeat this for each image.
             path: img.source,
             size: img.size,
             mime: img.mime || getImageMimeType(img.name),
+            width: img.width,
+            height: img.height,
           })),
         });
       } else {
@@ -455,6 +467,8 @@ Repeat this for each image.
             path: prepared[0]?.source,
             size: prepared[0]?.size,
             mime: prepared[0]?.mime || getImageMimeType(prepared[0]?.name ?? ""),
+            width: prepared[0]?.width,
+            height: prepared[0]?.height,
           },
         });
       }

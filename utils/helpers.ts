@@ -94,7 +94,7 @@ export async function prepareImagePayload(
     let name: string;
     let mime: string;
 
-    if (img.isExternal) {
+  if (img.isExternal) {
       arrayBuffer = await fetchExternalImageAsArrayBuffer(img.source);
       if (!arrayBuffer) return null;
 
@@ -111,11 +111,14 @@ export async function prepareImagePayload(
     }
 
     const base64 = arrayBufferToBase64(arrayBuffer);
+    const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
     return {
       name,
       base64,
       mime,
       size: arrayBuffer.byteLength,
+      width: dims?.width,
+      height: dims?.height,
       source: img.source,
     };
   } catch (e) {
@@ -546,6 +549,26 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+export async function getImageDimensionsFromArrayBuffer(
+  buffer: ArrayBuffer,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const dims = { width: img.width, height: img.height };
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 /**
  * Prompts the user to select an image file and returns it as a File object.
  */
@@ -622,8 +645,8 @@ export function buildOCRContext({
   modelId: string;
   modelName: string;
   prompt: string;
-  images?: Array<{ name: string; path: string; size: number; mime: string, extension: string }>;
-  singleImage?: { name: string; path: string; size: number; mime: string, extension: string };
+  images?: Array<{ name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number }>;
+  singleImage?: { name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number };
 }) {
   const base = {
     provider: {
@@ -647,6 +670,8 @@ export function buildOCRContext({
         path: img.path,
         size: img.size,
         mime: img.mime,
+        width: img.width,
+        height: img.height,
         index: i + 1,
         total: images.length,
       })),
@@ -661,6 +686,8 @@ export function buildOCRContext({
         path: img.path,
         size: img.size,
         mime: img.mime,
+        width: img.width,
+        height: img.height,
         index: 1,
         total: 1,
       },

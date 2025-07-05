@@ -201,6 +201,8 @@ export interface PreparedImage {
   base64: string;
   mime: string;
   size: number;
+  width?: number;
+  height?: number;
   source: string; // original source path or URL
 }
 
