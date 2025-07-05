@@ -273,6 +273,10 @@ export function formatTemplate(template: string, context: Record<string, any> = 
         return context.image?.gps?.longitude ?? "";
       case "image.gps.altitude":
         return context.image?.gps?.altitude ?? "";
+      case "embed.altText":
+        return context.embed?.altText ?? "";
+      case "embed.url":
+        return context.embed?.path ?? context.embed?.url ?? "";
       default:
         return "";
     }
@@ -464,13 +468,14 @@ export function findRelevantImageEmbed(editor: Editor): {
   link: string;
   isExternal: boolean;
   embedType: "internal" | "external";
+  embedText: string;
 } | null {
   // 1. Check selection
   const sel = editor.getSelection();
   let match = sel.match(/!\[\[(.+?)\]\]/);
   if (match) {
     const link = match[1].split("|")[0].trim();
-    return { link, isExternal: false, embedType: "internal" };
+    return { link, isExternal: false, embedType: "internal", embedText: match[0] };
   }
   match = sel.match(/!\[.*?\]\((.+?)\)/);
   if (match) {
@@ -479,6 +484,7 @@ export function findRelevantImageEmbed(editor: Editor): {
       link,
       isExternal: /^https?:\/\//i.test(link),
       embedType: "external",
+      embedText: match[0],
     };
   }
 
@@ -488,7 +494,7 @@ export function findRelevantImageEmbed(editor: Editor): {
     let embedMatch = line.match(/!\[\[(.+?)\]\]/);
     if (embedMatch) {
       const link = embedMatch[1].split("|")[0].trim();
-      return { link, isExternal: false, embedType: "internal" };
+      return { link, isExternal: false, embedType: "internal", embedText: embedMatch[0] };
     }
     embedMatch = line.match(/!\[.*?\]\((.+?)\)/);
     if (embedMatch) {
@@ -497,6 +503,7 @@ export function findRelevantImageEmbed(editor: Editor): {
         link,
         isExternal: /^https?:\/\//i.test(link),
         embedType: "external",
+        embedText: embedMatch[0],
       };
     }
   }
@@ -651,8 +658,8 @@ export function buildOCRContext({
   modelId: string;
   modelName: string;
   prompt: string;
-  images?: Array<{ name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number }>;
-  singleImage?: { name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number };
+  images?: Array<{ name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number, created?: string; modified?: string; altText?: string; gps?: { latitude?: number; longitude?: number; altitude?: number } }>;
+  singleImage?: { name: string; path: string; size: number; mime: string; extension: string; width?: number; height?: number, created?: string; modified?: string;  altText?: string;  gps?: { latitude?: number; longitude?: number; altitude?: number } };
 }) {
   const base = {
     provider: {

@@ -57,7 +57,6 @@ export default class GPTImageOCRPlugin extends Plugin {
         const arrayBuffer = await file.arrayBuffer();
         const base64 = arrayBufferToBase64(arrayBuffer);
         const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
-
         const provider = this.getProvider();
         const providerId = this.settings.provider;
         const modelId = (provider as any).model;
@@ -127,8 +126,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           new Notice("No image embed found.");
           return;
         }
-        const { link, isExternal } = embed;
-
+        const { link, isExternal, embedText } = embed;
         let arrayBuffer: ArrayBuffer | null = null;
 
         if (isExternal) {
@@ -182,28 +180,28 @@ export default class GPTImageOCRPlugin extends Plugin {
             return;
           }
 
-          const embedInfo = parseEmbedInfo(sel, link);
+          const embedInfo = parseEmbedInfo(embedText, link);
           const mime = getImageMimeType(embedInfo.path);
 
-            const context = buildOCRContext({
-              providerId,
-              providerName,
-              providerType,
-              modelId,
-              modelName,
-              prompt: this.settings.customPrompt,
-              singleImage: {
-                name: embedInfo.name,
-                extension: embedInfo.extension,
-                path: embedInfo.path,
-                size: arrayBuffer?.byteLength ?? 0,
-                mime,
-                width: dims?.width,
-                height: dims?.height,
-              },
-            }) as any;
-            // Add embed info to context for downstream consumers if needed
-            context.embed = embedInfo;
+          const context = buildOCRContext({
+            providerId,
+            providerName,
+            providerType,
+            modelId,
+            modelName,
+            prompt: this.settings.customPrompt,
+            singleImage: {
+              name: embedInfo.name,
+              extension: embedInfo.extension,
+              path: embedInfo.path,
+              size: arrayBuffer?.byteLength ?? 0,
+              mime,
+              width: dims?.width,
+              height: dims?.height,
+            },
+          }) as any;
+          // Add embed info to context for downstream consumers if needed
+          context.embed = embedInfo;
           // If embed is actually selected, replace it directly
           if (embedMatch && sel === embedMatch[0]) {
             editor.replaceSelection(content);
