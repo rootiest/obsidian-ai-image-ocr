@@ -16,6 +16,11 @@ text and handwriting recognition in images.
 AI models are vastly more effective at text extraction
 compared to traditional tools such as Tesseract.
 
+## Wiki
+
+Visit the [Plugin Wiki](https://github.com/rootiest/obsidian-ai-image-ocr/wiki)
+for detailed documentation.
+
 ## Supported Models
 
 > [!TIP]
