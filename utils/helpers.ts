@@ -195,23 +195,97 @@ export function parseJsonResponse(
  * Example: "Extracted at {{date:YYYY-MM-DD}} by {{user}}" with { user: "Alice" }
  */
 export function formatTemplate(template: string, context: Record<string, any> = {}): string {
+  const getValue = (path: string): any => {
+    const parts = path.split(".");
+    let value: any = context;
+    for (const part of parts) {
+      if (value && part in value) {
+        value = value[part];
+      } else {
+        value = undefined;
+        break;
+      }
+    }
+    if (value !== undefined) return value;
+
+    // Derived / legacy mappings
+    switch (path) {
+      case "model.id":
+        return context.model?.id ?? context.modelId ?? context.model ?? "";
+      case "model.name":
+        return context.model?.name ?? context.modelName ?? context.model ?? "";
+      case "provider.name":
+        return context.provider?.name ?? context.providerName ?? "";
+      case "provider.id":
+        return context.provider?.id ?? context.providerId ?? context.provider ?? "";
+      case "provider.type":
+        return context.provider?.type ?? context.providerType ?? "";
+      case "image.filename":
+        return context.image?.filename ?? context.image?.name ?? "";
+      case "image.name": {
+        const fname = context.image?.filename ?? context.image?.name ?? "";
+        return fname.replace(/\.[^.]*$/, "");
+      }
+      case "image.extension": {
+        const fname = context.image?.filename ?? context.image?.name ?? "";
+        const m = fname.match(/\.([^.]+)$/);
+        return m ? m[1] : "";
+      }
+      case "image.path":
+        return context.image?.path ?? context.image?.source ?? "";
+      case "image.size":
+        return context.image?.size ?? "";
+      case "image.dimensions":
+        if (context.image?.width && context.image?.height) {
+          return `${context.image.width}x${context.image.height}`;
+        }
+        return "";
+      case "image.width":
+        return context.image?.width ?? "";
+      case "image.height":
+        return context.image?.height ?? "";
+      case "image.created":
+        return context.image?.created ?? "";
+      case "image.modified":
+        return context.image?.modified ?? "";
+      case "image.camera.make":
+        return context.image?.camera?.make ?? "";
+      case "image.camera.model":
+        return context.image?.camera?.model ?? "";
+      case "image.lens.model":
+        return context.image?.lens?.model ?? "";
+      case "image.iso":
+        return context.image?.iso ?? "";
+      case "image.exposure":
+        return context.image?.exposure ?? "";
+      case "image.aperture":
+        return context.image?.aperture ?? "";
+      case "image.focalLength":
+        return context.image?.focalLength ?? "";
+      case "image.orientation":
+        return context.image?.orientation ?? "";
+      case "image.gps.latitude":
+        return context.image?.gps?.latitude ?? "";
+      case "image.gps.longitude":
+        return context.image?.gps?.longitude ?? "";
+      case "image.gps.altitude":
+        return context.image?.gps?.altitude ?? "";
+      default:
+        return "";
+    }
+  };
+
   return template.replace(/{{(.*?)}}/g, (_, expr) => {
     expr = expr.trim();
-    // Handle date/time formatting: {{date:FORMAT}}
     if (expr.startsWith("date:")) {
       const fmt = expr.slice(5).trim();
       return window.moment ? window.moment().format(fmt) : "";
     }
-    // Handle moment.js direct: {{YYYY-MM-DD}}
     if (window.moment && /^[YMDHms\-:/ ]+$/.test(expr)) {
       return window.moment().format(expr);
     }
-    // Handle context keys: {{key}}
-    if (context && expr in context) {
-      return context[expr];
-    }
-    // Unknown placeholder, return as-is or empty
-    return "";
+    const val = getValue(expr);
+    return val != null ? String(val) : "";
   });
 }
 
