@@ -751,3 +751,7 @@ export function parseEmbedInfo(embedMarkdown: string, link: string) {
     altText,
   };
 }
+
+export function templateHasImagePlaceholder(template: string): boolean {
+  return /\{\{\s*image\.[^}]+\s*\}\}/.test(template);
+}

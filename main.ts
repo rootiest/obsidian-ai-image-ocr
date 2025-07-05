@@ -31,6 +31,7 @@ import {
   buildOCRContext,
   parseEmbedInfo,
   getImageMimeType,
+  templateHasImagePlaceholder,
 } from "./utils/helpers";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
@@ -472,7 +473,28 @@ Repeat this for each image.
       }
 
       // Use your formatting/output logic
-      await handleExtractedContent(this, contentForFormatting, null, contextForFormatting);
+      const noteNameTemplate = this.settings.batchNoteNameTemplate || this.settings.noteNameTemplate;
+      const noteFolderTemplate = this.settings.batchNoteFolderPath || this.settings.noteFolderPath;
+
+      if (
+        Array.isArray(contextForFormatting.images) &&
+        (templateHasImagePlaceholder(noteNameTemplate) || templateHasImagePlaceholder(noteFolderTemplate))
+      ) {
+        // Per-image notes
+        for (let i = 0; i < contextForFormatting.images.length; i++) {
+          const imgContext = {
+            ...contextForFormatting,
+            image: contextForFormatting.images[i],
+            imageIndex: i + 1,
+            imageTotal: contextForFormatting.images.length,
+          };
+          const imgContent = Array.isArray(contentForFormatting) ? contentForFormatting[i] : contentForFormatting;
+          await handleExtractedContent(this, imgContent, null, imgContext);
+        }
+      } else {
+        // Single batch note
+        await handleExtractedContent(this, contentForFormatting, null, contextForFormatting);
+      }
 
     } catch (e) {
       notice.hide();
