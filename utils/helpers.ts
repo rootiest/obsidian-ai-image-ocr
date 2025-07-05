@@ -266,7 +266,13 @@ export async function handleExtractedContent(
   // Use the new formatting function
   const finalContent = applyFormatting(plugin, content, context);
 
-  if (!plugin.settings.outputToNewNote) {
+  const isBatch = Array.isArray(context.images);
+
+  const outputToNewNote = isBatch
+    ? plugin.settings.batchOutputToNewNote
+    : plugin.settings.outputToNewNote;
+
+  if (!outputToNewNote) {
     if (editor) {
       const cursor = editor.getCursor();
       editor.replaceSelection(finalContent);
@@ -283,8 +289,14 @@ export async function handleExtractedContent(
     return;
   }
 
-  const name = formatTemplate(plugin.settings.noteNameTemplate, context);
-  const folder = formatTemplate(plugin.settings.noteFolderPath, context).trim();
+  const name = formatTemplate(
+    isBatch ? plugin.settings.batchNoteNameTemplate : plugin.settings.noteNameTemplate,
+    context
+  );
+  const folder = formatTemplate(
+    isBatch ? plugin.settings.batchNoteFolderPath : plugin.settings.noteFolderPath,
+    context
+  ).trim();
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
 
   // Ensure folder exists
@@ -303,8 +315,12 @@ export async function handleExtractedContent(
 
   let file = plugin.app.vault.getAbstractFileByPath(path);
 
+  const appendIfExists = isBatch
+    ? plugin.settings.batchAppendIfExists
+    : plugin.settings.appendIfExists;
+
   if (file instanceof TFile) {
-    if (plugin.settings.appendIfExists) {
+    if (appendIfExists) {
       const existing = await plugin.app.vault.read(file);
       const updatedContent = existing + "\n\n" + finalContent;
 
