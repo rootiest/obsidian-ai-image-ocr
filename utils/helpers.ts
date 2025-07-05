@@ -6,7 +6,7 @@
 import { Editor, EditorPosition, RequestUrlResponse, TFile, Vault, App, Notice, normalizePath } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import type { GPTImageOCRSettings } from "../types";
-import { FRIENDLY_PROVIDER_NAMES, CollectedImage, PreparedImage, OCRProvider } from "../types";
+import { FRIENDLY_PROVIDER_NAMES, FRIENDLY_MODEL_NAMES, CollectedImage, PreparedImage, OCRProvider } from "../types";
 import { OpenAIProvider } from "../providers/openai-provider";
 import { GeminiProvider } from "../providers/gemini-provider";
 
@@ -593,4 +593,121 @@ export function getImageMimeType(fileName: string): string {
     case "svg": return "image/svg+xml";
     default: return "application/octet-stream";
   }
+}
+
+/**
+ * Returns the provider type based on the provider ID.
+ * "gemini" for Gemini provider IDs, "openai" for OpenAI provider IDs.
+ */
+export function getProviderType(providerId: string): "gemini" | "openai" {
+  return providerId.startsWith("gemini") ? "gemini" : "openai";
+}
+
+/**
+ * Builds the OCR context for API requests.
+ */
+export function buildOCRContext({
+  providerId,
+  providerName,
+  providerType,
+  modelId,
+  modelName,
+  prompt,
+  images,
+  singleImage,
+}: {
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  modelId: string;
+  modelName: string;
+  prompt: string;
+  images?: Array<{ name: string; path: string; size: number; mime: string, extension: string }>;
+  singleImage?: { name: string; path: string; size: number; mime: string, extension: string };
+}) {
+  const base = {
+    provider: {
+      id: providerId,
+      name: providerName,
+      type: providerType,
+    },
+    model: {
+      id: modelId,
+      name: modelName,
+    },
+    prompt,
+  };
+
+  if (images && images.length > 1) {
+    return {
+      ...base,
+      images: images.map((img, i) => ({
+        name: img.name.replace(/\.[^.]*$/, ""),
+        extension: img.name.split('.').pop() || "",
+        path: img.path,
+        size: img.size,
+        mime: img.mime,
+        index: i + 1,
+        total: images.length,
+      })),
+    };
+  } else if (singleImage || (images && images.length === 1)) {
+    const img = singleImage || images![0];
+    return {
+      ...base,
+      image: {
+        name: img.name.replace(/\.[^.]*$/, ""),
+        extension: img.name.split('.').pop() || "",
+        path: img.path,
+        size: img.size,
+        mime: img.mime,
+        index: 1,
+        total: 1,
+      },
+    };
+  } else {
+    return base;
+  }
+}
+
+export function parseEmbedInfo(embedMarkdown: string, link: string) {
+  // Try to extract alt text and URL from markdown image syntax
+  // e.g. ![alt text](url)
+  let altText = "";
+  let url = link;
+
+  const mdMatch = embedMarkdown.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+  if (mdMatch) {
+    altText = mdMatch[1];
+    url = mdMatch[2];
+  } else {
+    // Try Obsidian-style embed: ![[filename|alt]]
+    const obsMatch = embedMarkdown.match(/!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/);
+    if (obsMatch) {
+      url = obsMatch[1];
+      altText = obsMatch[2] || "";
+    }
+  }
+
+  // Extract extension
+  let extension = "";
+  let name = url;
+  const lastSlash = url.lastIndexOf("/");
+  const lastDot = url.lastIndexOf(".");
+  if (lastDot > -1 && lastDot > lastSlash) {
+    extension = url.slice(lastDot + 1);
+    name = url.slice(lastSlash + 1, lastDot);
+  } else if (lastSlash > -1) {
+    name = url.slice(lastSlash + 1);
+  } else if (lastDot > -1) {
+    name = url.slice(0, lastDot);
+    extension = url.slice(lastDot + 1);
+  }
+
+  return {
+    name,
+    extension,
+    path: url,
+    altText,
+  };
 }

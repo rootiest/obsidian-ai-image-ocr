@@ -13,6 +13,7 @@ import {
   DEFAULT_BATCH_PROMPT_TEXT,
   OCRProvider,
   PreparedImage,
+  FRIENDLY_MODEL_NAMES,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai-provider";
 import { GeminiProvider } from "./providers/gemini-provider";
@@ -25,7 +26,10 @@ import {
   arrayBufferToBase64,
   selectImageFile,
   selectFolder,
-  formatTemplate
+  getProviderType,
+  buildOCRContext,
+  parseEmbedInfo,
+  getImageMimeType,
 } from "./utils/helpers";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
@@ -53,7 +57,20 @@ export default class GPTImageOCRPlugin extends Plugin {
         const base64 = arrayBufferToBase64(arrayBuffer);
 
         const provider = this.getProvider();
-        const notice = new Notice(`Using ${provider.name}…`, 0);
+        const providerId = this.settings.provider;
+        const modelId = (provider as any).model;
+        const providerName = getFriendlyProviderNames(this.settings)[providerId];
+        let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+        if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+          modelName = this.settings.ollamaModelFriendlyName.trim();
+        } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+          modelName = this.settings.lmstudioModelFriendlyName.trim();
+        } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+          modelName = this.settings.customModelFriendlyName.trim();
+        }
+        const providerType = getProviderType(providerId);
+
+        const notice = new Notice(`Using ${providerName} ${modelName}…`, 0);
         try {
           const content = await provider.extractTextFromBase64(base64);
           notice.hide();
@@ -62,19 +79,24 @@ export default class GPTImageOCRPlugin extends Plugin {
             const editor = this.app.workspace.activeEditor?.editor;
 
             // Build the context object
-            const context = {
-              provider: this.settings.provider,
-              providerName: provider.name,
-              model: (provider as any).model, // or provider.model if public
+            const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+            const mime = file.type || getImageMimeType(file.name);
+
+            const context = buildOCRContext({
+              providerId,
+              providerName,
+              providerType,
+              modelId,
+              modelName,
               prompt: this.settings.customPrompt,
-              image: {
-                name: file.name,
-                path: file.name, // or file.path if available
+              singleImage: {
+                name: file.name.replace(/\.[^.]*$/, ""),
+                extension: extension || "",
+                path: file.name,
                 size: file.size,
-                mime: file.type,
+                mime,
               },
-              // note: fill this in if you know the output note name/path at this point
-            };
+            });
 
             await handleExtractedContent(this, content, editor ?? null, context);
           } else {
@@ -129,8 +151,21 @@ export default class GPTImageOCRPlugin extends Plugin {
         const base64 = arrayBufferToBase64(arrayBuffer);
 
         const provider = this.getProvider();
+        const providerId = this.settings.provider;
+        const modelId = (provider as any).model;
+        const providerName = getFriendlyProviderNames(this.settings)[providerId];
+        let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+        if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+          modelName = this.settings.ollamaModelFriendlyName.trim();
+        } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+          modelName = this.settings.lmstudioModelFriendlyName.trim();
+        } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+          modelName = this.settings.customModelFriendlyName.trim();
+        }
+        const providerType = getProviderType(providerId);
+
         const notice = new Notice(
-          `Extracting from embed with ${provider.name}…`,
+          `Extracting from embed with ${providerName} ${modelName}…`,
           0,
         );
         try {
@@ -142,6 +177,26 @@ export default class GPTImageOCRPlugin extends Plugin {
             return;
           }
 
+          const embedInfo = parseEmbedInfo(sel, link);
+          const mime = getImageMimeType(embedInfo.path);
+
+            const context = buildOCRContext({
+              providerId,
+              providerName,
+              providerType,
+              modelId,
+              modelName,
+              prompt: this.settings.customPrompt,
+              singleImage: {
+                name: embedInfo.name,
+                extension: embedInfo.extension,
+                path: embedInfo.path,
+                size: arrayBuffer?.byteLength ?? 0,
+                mime,
+              },
+            }) as any;
+            // Add embed info to context for downstream consumers if needed
+            context.embed = embedInfo;
           // If embed is actually selected, replace it directly
           if (embedMatch && sel === embedMatch[0]) {
             editor.replaceSelection(content);
@@ -149,7 +204,8 @@ export default class GPTImageOCRPlugin extends Plugin {
           }
 
           // Otherwise respect user settings
-          await handleExtractedContent(this, content, editor ?? null);
+          // Build the context object
+          await handleExtractedContent(this, content, editor ?? null, context);
         } catch (e) {
           notice.hide();
           console.error("OCR failed:", e);
@@ -318,7 +374,20 @@ export default class GPTImageOCRPlugin extends Plugin {
     }
 
     const provider = this.getProvider();
-    const notice = new Notice(`Extracting text from ${prepared.length} images using ${provider.name}…`, 0);
+    const providerId = this.settings.provider;
+    const modelId = (provider as any).model;
+    const providerName = getFriendlyProviderNames(this.settings)[providerId];
+    let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+    if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+      modelName = this.settings.ollamaModelFriendlyName.trim();
+    } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+      modelName = this.settings.lmstudioModelFriendlyName.trim();
+    } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+      modelName = this.settings.customModelFriendlyName.trim();
+    }
+    const providerType = getProviderType(providerId);
+
+    const notice = new Notice(`Extracting text from ${prepared.length} images using ${providerName} ${modelName}…`, 0);
 
     // Compose the batch prompt with the required instruction appended
     const batchFormatInstruction = `
@@ -355,56 +424,39 @@ Repeat this for each image.
       let contextForFormatting: any;
 
       if (matches.length > 1) {
-        // Batch mode: multiple images found
         contentForFormatting = matches;
-        contextForFormatting = {
-          provider: this.settings.provider,
-          providerName: provider.name,
-          model: (provider as any).model,
+        contextForFormatting = buildOCRContext({
+          providerId,
+          providerName,
+          providerType,
+          modelId,
+          modelName,
           prompt: batchPrompt,
-          images: prepared.map((img, i) => ({
-            name: img.name,
+          images: prepared.map(img => ({
+            name: img.name.replace(/\.[^.]*$/, ""),
+            extension: img.name.includes(".") ? (img.name.split(".").pop() || "") : "",
             path: img.source,
             size: img.size,
-            mime: img.mime,
-            index: i + 1,
-            total: prepared.length,
+            mime: img.mime || getImageMimeType(img.name),
           })),
-        };
-      } else if (matches.length === 1) {
-        // Single image found (still use batch delimiters)
-        contentForFormatting = matches[0];
-        contextForFormatting = {
-          provider: this.settings.provider,
-          providerName: provider.name,
-          model: (provider as any).model,
-          prompt: batchPrompt,
-          image: {
-            name: prepared[0]?.name,
-            path: prepared[0]?.source,
-            size: prepared[0]?.size,
-            mime: prepared[0]?.mime,
-            index: 1,
-            total: 1,
-          },
-        };
+        });
       } else {
-        // No delimiters found, treat as single image
-        contentForFormatting = response.trim();
-        contextForFormatting = {
-          provider: this.settings.provider,
-          providerName: provider.name,
-          model: (provider as any).model,
+        contentForFormatting = matches.length === 1 ? matches[0] : response.trim();
+        contextForFormatting = buildOCRContext({
+          providerId,
+          providerName,
+          providerType,
+          modelId,
+          modelName,
           prompt: batchPrompt,
-          image: {
-            name: prepared[0]?.name,
+          singleImage: {
+            name: prepared[0]?.name.replace(/\.[^.]*$/, ""),
+            extension: prepared[0]?.name.includes(".") ? (prepared[0]?.name.split(".").pop() || "") : "",
             path: prepared[0]?.source,
             size: prepared[0]?.size,
-            mime: prepared[0]?.mime,
-            index: 1,
-            total: 1,
+            mime: prepared[0]?.mime || getImageMimeType(prepared[0]?.name ?? ""),
           },
-        };
+        });
       }
 
       // Use your formatting/output logic

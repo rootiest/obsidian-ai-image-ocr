@@ -157,6 +157,19 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
           cls: "setting-item-warning"
         });
       }
+
+      new Setting(containerEl)
+        .setName("Model friendly name")
+        .setDesc("Optional. Friendly display name for this model (e.g. 'Llama 3.2 Vision').")
+        .addText(text =>
+          text
+            .setPlaceholder("Llama 3.2 Vision")
+            .setValue(this.plugin.settings.ollamaModelFriendlyName || "")
+            .onChange(async (value) => {
+              this.plugin.settings.ollamaModelFriendlyName = value.trim();
+              await this.plugin.saveSettings();
+            })
+        );
     }
 
     if (this.plugin.settings.provider === "lmstudio") {
@@ -202,6 +215,19 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
           cls: "setting-item-warning"
         });
       }
+
+      new Setting(containerEl)
+        .setName("Model friendly name")
+        .setDesc("Optional. Friendly display name for this model (e.g. 'Gemma 3').")
+        .addText(text =>
+          text
+            .setPlaceholder("Gemma 3")
+            .setValue(this.plugin.settings.lmstudioModelFriendlyName || "")
+            .onChange(async (value) => {
+              this.plugin.settings.lmstudioModelFriendlyName = value.trim();
+              await this.plugin.saveSettings();
+            })
+        );
     }
 
     if (this.plugin.settings.provider === "custom") {
@@ -256,6 +282,19 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
               this.plugin.settings.customApiKey = value.trim();
               await this.plugin.saveSettings();
             }),
+        );
+
+      new Setting(containerEl)
+        .setName("Model friendly name")
+        .setDesc("Optional. Friendly display name for this model (e.g. 'My Custom Model').")
+        .addText(text =>
+          text
+            .setPlaceholder("My Custom Model")
+            .setValue(this.plugin.settings.customModelFriendlyName || "")
+            .onChange(async (value) => {
+              this.plugin.settings.customModelFriendlyName = value.trim();
+              await this.plugin.saveSettings();
+            })
         );
     }
 
