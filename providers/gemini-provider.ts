@@ -3,9 +3,11 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { OCRProvider, GeminiPayload, DEFAULT_PROMPT_TEXT } from "../types";
+import { OCRProvider, DEFAULT_PROMPT_TEXT } from "../types";
 import { requestUrl } from "obsidian";
 import { parseJsonResponse } from "../utils/helpers";
+import type { PreparedImage } from "../types";
+import { processSingleImage } from "../utils/ocr-utils";
 
 /**
  * Handles OCR requests to Google Gemini API endpoints.
@@ -23,47 +25,50 @@ export class GeminiProvider implements OCRProvider {
     this.name = nameOverride ?? model.replace(/^models\//, "");
   }
 
-  async extractTextFromBase64(image: string): Promise<string | null> {
-    const payload: GeminiPayload = {
-      contents: [
+  async process(images: PreparedImage[], prompt: string): Promise<string> {
+    try {
+      const contents = [
         {
           role: "user",
           parts: [
-            {
+            ...images.map((img) => ({
               inline_data: {
-                mime_type: "image/jpeg",
-                data: image,
+                mime_type: img.mime,
+                data: img.base64,
               },
-            },
+            })),
             {
-              text: this.prompt,
+              text: prompt,
             },
           ],
         },
-      ],
-    };
+      ];
 
-    try {
       const response = await requestUrl({
         url: `https://generativelanguage.googleapis.com/v1beta/${this.model}:generateContent?key=${this.apiKey}`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ contents }),
       });
 
-      const data = parseJsonResponse(response, d => Array.isArray(d.candidates));
+      const data = parseJsonResponse(response, (d) =>
+        Array.isArray(d.candidates) && !!d.candidates[0]?.content?.parts
+      );
 
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return data.candidates[0].content.parts[0].text.trim();
-      }
+      const part = data.candidates[0]?.content?.parts?.[0]?.text?.trim();
+      if (part) return part;
 
       console.warn("Gemini response did not contain expected text:", data);
-      return null;
+      return "";
     } catch (err) {
       console.error("Gemini fetch error:", err);
-      return null;
+      return "";
     }
+  }
+
+  async extractTextFromBase64(image: string): Promise<string | null> {
+    return await processSingleImage(this, image, "image/jpeg", this.prompt);
   }
 }

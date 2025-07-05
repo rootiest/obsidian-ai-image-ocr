@@ -45,3 +45,13 @@
   font-weight: 600;
 }
 
+.ai-image-ocr__template-input {
+  width: 100%;
+  min-height: 6em;
+  font-family: var(--font-text);
+  box-sizing: border-box;
+}
+
+.ai-image-ocr__setting-input-below {
+  margin-top: 0.5em;
+}

@@ -9,9 +9,11 @@ import {
 import {
   GPTImageOCRSettings,
   DEFAULT_SETTINGS,
-  FRIENDLY_PROVIDER_NAMES,
   DEFAULT_PROMPT_TEXT,
+  DEFAULT_BATCH_PROMPT_TEXT,
   OCRProvider,
+  PreparedImage,
+  FRIENDLY_MODEL_NAMES,
 } from "./types";
 import { OpenAIProvider } from "./providers/openai-provider";
 import { GeminiProvider } from "./providers/gemini-provider";
@@ -22,7 +24,13 @@ import {
   resolveInternalImagePath,
   fetchExternalImageAsArrayBuffer,
   arrayBufferToBase64,
+  getImageDimensionsFromArrayBuffer,
   selectImageFile,
+  selectFolder,
+  getProviderType,
+  buildOCRContext,
+  parseEmbedInfo,
+  getImageMimeType,
 } from "./utils/helpers";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
@@ -48,16 +56,52 @@ export default class GPTImageOCRPlugin extends Plugin {
         }
         const arrayBuffer = await file.arrayBuffer();
         const base64 = arrayBufferToBase64(arrayBuffer);
-
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
         const provider = this.getProvider();
-        const notice = new Notice(`Using ${provider.name}…`, 0);
+        const providerId = this.settings.provider;
+        const modelId = (provider as any).model;
+        const providerName = getFriendlyProviderNames(this.settings)[providerId];
+        let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+        if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+          modelName = this.settings.ollamaModelFriendlyName.trim();
+        } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+          modelName = this.settings.lmstudioModelFriendlyName.trim();
+        } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+          modelName = this.settings.customModelFriendlyName.trim();
+        }
+        const providerType = getProviderType(providerId);
+
+        const notice = new Notice(`Using ${providerName} ${modelName}…`, 0);
         try {
           const content = await provider.extractTextFromBase64(base64);
           notice.hide();
 
           if (content) {
             const editor = this.app.workspace.activeEditor?.editor;
-            await handleExtractedContent(this, content, editor ?? null);
+
+            // Build the context object
+            const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+            const mime = file.type || getImageMimeType(file.name);
+
+            const context = buildOCRContext({
+              providerId,
+              providerName,
+              providerType,
+              modelId,
+              modelName,
+              prompt: this.settings.customPrompt,
+              singleImage: {
+                name: file.name.replace(/\.[^.]*$/, ""),
+                extension: extension || "",
+                path: file.name,
+                size: file.size,
+                mime,
+                width: dims?.width,
+                height: dims?.height,
+              },
+            });
+
+            await handleExtractedContent(this, content, editor ?? null, context);
           } else {
             new Notice("No content returned.");
           }
@@ -82,8 +126,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           new Notice("No image embed found.");
           return;
         }
-        const { link, isExternal } = embed;
-
+        const { link, isExternal, embedText } = embed;
         let arrayBuffer: ArrayBuffer | null = null;
 
         if (isExternal) {
@@ -108,10 +151,24 @@ export default class GPTImageOCRPlugin extends Plugin {
           return;
         }
         const base64 = arrayBufferToBase64(arrayBuffer);
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
 
         const provider = this.getProvider();
+        const providerId = this.settings.provider;
+        const modelId = (provider as any).model;
+        const providerName = getFriendlyProviderNames(this.settings)[providerId];
+        let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+        if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+          modelName = this.settings.ollamaModelFriendlyName.trim();
+        } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+          modelName = this.settings.lmstudioModelFriendlyName.trim();
+        } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+          modelName = this.settings.customModelFriendlyName.trim();
+        }
+        const providerType = getProviderType(providerId);
+
         const notice = new Notice(
-          `Extracting from embed with ${provider.name}…`,
+          `Extracting from embed with ${providerName} ${modelName}…`,
           0,
         );
         try {
@@ -123,6 +180,28 @@ export default class GPTImageOCRPlugin extends Plugin {
             return;
           }
 
+          const embedInfo = parseEmbedInfo(embedText, link);
+          const mime = getImageMimeType(embedInfo.path);
+
+          const context = buildOCRContext({
+            providerId,
+            providerName,
+            providerType,
+            modelId,
+            modelName,
+            prompt: this.settings.customPrompt,
+            singleImage: {
+              name: embedInfo.name,
+              extension: embedInfo.extension,
+              path: embedInfo.path,
+              size: arrayBuffer?.byteLength ?? 0,
+              mime,
+              width: dims?.width,
+              height: dims?.height,
+            },
+          }) as any;
+          // Add embed info to context for downstream consumers if needed
+          context.embed = embedInfo;
           // If embed is actually selected, replace it directly
           if (embedMatch && sel === embedMatch[0]) {
             editor.replaceSelection(content);
@@ -130,7 +209,8 @@ export default class GPTImageOCRPlugin extends Plugin {
           }
 
           // Otherwise respect user settings
-          await handleExtractedContent(this, content, editor ?? null);
+          // Build the context object
+          await handleExtractedContent(this, content, editor ?? null, context);
         } catch (e) {
           notice.hide();
           console.error("OCR failed:", e);
@@ -138,6 +218,14 @@ export default class GPTImageOCRPlugin extends Plugin {
         }
       },
     });
+
+    // --- Batch Image Folder OCR ---
+    this.addCommand({
+      id: "extract-text-from-image-folder",
+      name: "Extract Text from Image Folder",
+      callback: () => this.extractTextFromImageFolder(),
+    });
+
 
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
   }
@@ -260,4 +348,147 @@ export default class GPTImageOCRPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+
+  /**
+   * Collects images from a folder for text extraction
+  */
+  async extractTextFromImageFolder() {
+    const files = await selectFolder();
+    if (!files) return;
+
+    const imageFiles = Array.from(files).filter(file =>
+      /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name)
+    );
+
+    const prepared = await Promise.all(
+      imageFiles.map(async (file): Promise<PreparedImage> => {
+        const arrayBuffer = await file.arrayBuffer();
+        const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
+        return {
+          name: file.name,
+          base64: arrayBufferToBase64(arrayBuffer),
+          mime: file.type,
+          size: file.size,
+          width: dims?.width,
+          height: dims?.height,
+          source: file.name,
+        };
+      })
+    );
+
+    if (prepared.length === 0) {
+      new Notice("No valid images could be prepared.");
+      return;
+    }
+
+    const provider = this.getProvider();
+    const providerId = this.settings.provider;
+    const modelId = (provider as any).model;
+    const providerName = getFriendlyProviderNames(this.settings)[providerId];
+    let modelName = FRIENDLY_MODEL_NAMES[modelId] || modelId;
+    if (providerId === "ollama" && this.settings.ollamaModelFriendlyName?.trim()) {
+      modelName = this.settings.ollamaModelFriendlyName.trim();
+    } else if (providerId === "lmstudio" && this.settings.lmstudioModelFriendlyName?.trim()) {
+      modelName = this.settings.lmstudioModelFriendlyName.trim();
+    } else if (providerId === "custom" && this.settings.customModelFriendlyName?.trim()) {
+      modelName = this.settings.customModelFriendlyName.trim();
+    }
+    const providerType = getProviderType(providerId);
+
+    const notice = new Notice(`Extracting text from ${prepared.length} images using ${providerName} ${modelName}…`, 0);
+
+    // Compose the batch prompt with the required instruction appended
+    const batchFormatInstruction = `
+For each image, wrap the response using the following format:
+
+--- BEGIN IMAGE: ---
+<insert OCR text>
+--- END IMAGE ---
+
+Repeat this for each image.
+`;
+    const userPrompt = this.settings.batchCustomPrompt?.trim() || DEFAULT_BATCH_PROMPT_TEXT;
+    const batchPrompt = `${userPrompt}\n${batchFormatInstruction}`;
+
+    try {
+      // Send all images in a single API call with the batch prompt
+      let response: string;
+      if (provider.process) {
+        response = await provider.process(prepared, batchPrompt);
+      } else {
+        // Fallback: just process the first image (should not happen for batch-capable providers)
+        response = await provider.extractTextFromBase64(prepared[0].base64) ?? "";
+      }
+
+      notice.hide();
+
+      // Parse the response into an array using the delimiter
+      const matches = Array.from(
+        response.matchAll(/--- BEGIN IMAGE: ---\s*([\s\S]*?)\s*--- END IMAGE ---/g),
+        m => m[1].trim()
+      );
+
+      let contentForFormatting: string | string[];
+      let contextForFormatting: any;
+
+      if (matches.length > 1) {
+        contentForFormatting = matches;
+        contextForFormatting = buildOCRContext({
+          providerId,
+          providerName,
+          providerType,
+          modelId,
+          modelName,
+          prompt: batchPrompt,
+          images: prepared.map(img => ({
+            name: img.name.replace(/\.[^.]*$/, ""),
+            extension: img.name.includes(".") ? (img.name.split(".").pop() || "") : "",
+            path: img.source,
+            size: img.size,
+            mime: img.mime || getImageMimeType(img.name),
+            width: img.width,
+            height: img.height,
+          })),
+        });
+      } else {
+        contentForFormatting = matches.length === 1 ? matches[0] : response.trim();
+        contextForFormatting = buildOCRContext({
+          providerId,
+          providerName,
+          providerType,
+          modelId,
+          modelName,
+          prompt: batchPrompt,
+          singleImage: {
+            name: prepared[0]?.name.replace(/\.[^.]*$/, ""),
+            extension: prepared[0]?.name.includes(".") ? (prepared[0]?.name.split(".").pop() || "") : "",
+            path: prepared[0]?.source,
+            size: prepared[0]?.size,
+            mime: prepared[0]?.mime || getImageMimeType(prepared[0]?.name ?? ""),
+            width: prepared[0]?.width,
+            height: prepared[0]?.height,
+          },
+        });
+      }
+
+      // Use your formatting/output logic
+      await handleExtractedContent(this, contentForFormatting, null, contextForFormatting);
+
+    } catch (e) {
+      notice.hide();
+      new Notice("Failed to extract text from images.");
+      console.error(e);
+    }
+  }
+
+  async insertOutputToEditor(text: string) {
+    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!activeView) {
+      new Notice("No active editor.");
+      return;
+    }
+    const editor = activeView.editor;
+    editor.replaceSelection(text + "\n");
+  }
+
 }
