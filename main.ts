@@ -24,7 +24,7 @@ import {
   arrayBufferToBase64,
   selectImageFile,
   selectFolder,
-  submitOCRRequest
+  formatTemplate
 } from "./utils/helpers";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
@@ -59,7 +59,23 @@ export default class GPTImageOCRPlugin extends Plugin {
 
           if (content) {
             const editor = this.app.workspace.activeEditor?.editor;
-            await handleExtractedContent(this, content, editor ?? null);
+
+            // Build the context object
+            const context = {
+              provider: this.settings.provider,
+              providerName: provider.name,
+              model: (provider as any).model, // or provider.model if public
+              prompt: this.settings.customPrompt,
+              image: {
+                name: file.name,
+                path: file.name, // or file.path if available
+                size: file.size,
+                mime: file.type,
+              },
+              // note: fill this in if you know the output note name/path at this point
+            };
+
+            await handleExtractedContent(this, content, editor ?? null, context);
           } else {
             new Notice("No content returned.");
           }
@@ -299,17 +315,99 @@ export default class GPTImageOCRPlugin extends Plugin {
       return;
     }
 
-    // Use the same provider instance as everywhere else
     const provider = this.getProvider();
     const notice = new Notice(`Extracting text from ${prepared.length} images using ${provider.name}…`, 0);
+
+    // Compose the batch prompt with the required instruction appended
+    const batchFormatInstruction = `
+For each image, wrap the response using the following format:
+
+--- BEGIN IMAGE: ---
+<insert OCR text>
+--- END IMAGE ---
+
+Repeat this for each image.
+`;
+    const userPrompt = this.settings.batchCustomPrompt?.trim() || DEFAULT_PROMPT_TEXT;
+    const batchPrompt = `${userPrompt}\n${batchFormatInstruction}`;
+
     try {
-      // Use the batch process method if available
-      const output = provider.process
-        ? await provider.process(prepared, this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT)
-        : await Promise.all(prepared.map(img => provider.extractTextFromBase64(img.base64))).then(results => results.join("\n\n"));
+      // Send all images in a single API call with the batch prompt
+      let response: string;
+      if (provider.process) {
+        response = await provider.process(prepared, batchPrompt);
+      } else {
+        // Fallback: just process the first image (should not happen for batch-capable providers)
+        response = await provider.extractTextFromBase64(prepared[0].base64) ?? "";
+      }
 
       notice.hide();
-      await this.insertOutputToEditor(output);
+
+      // Parse the response into an array using the delimiter
+      const matches = Array.from(
+        response.matchAll(/--- BEGIN IMAGE: ---\s*([\s\S]*?)\s*--- END IMAGE ---/g),
+        m => m[1].trim()
+      );
+
+      let contentForFormatting: string | string[];
+      let contextForFormatting: any;
+
+      if (matches.length > 1) {
+        // Batch mode: multiple images found
+        contentForFormatting = matches;
+        contextForFormatting = {
+          provider: this.settings.provider,
+          providerName: provider.name,
+          model: (provider as any).model,
+          prompt: batchPrompt,
+          images: prepared.map((img, i) => ({
+            name: img.name,
+            path: img.source,
+            size: img.size,
+            mime: img.mime,
+            index: i + 1,
+            total: prepared.length,
+          })),
+        };
+      } else if (matches.length === 1) {
+        // Single image found (still use batch delimiters)
+        contentForFormatting = matches[0];
+        contextForFormatting = {
+          provider: this.settings.provider,
+          providerName: provider.name,
+          model: (provider as any).model,
+          prompt: batchPrompt,
+          image: {
+            name: prepared[0]?.name,
+            path: prepared[0]?.source,
+            size: prepared[0]?.size,
+            mime: prepared[0]?.mime,
+            index: 1,
+            total: 1,
+          },
+        };
+      } else {
+        // No delimiters found, treat as single image
+        contentForFormatting = response.trim();
+        contextForFormatting = {
+          provider: this.settings.provider,
+          providerName: provider.name,
+          model: (provider as any).model,
+          prompt: batchPrompt,
+          image: {
+            name: prepared[0]?.name,
+            path: prepared[0]?.source,
+            size: prepared[0]?.size,
+            mime: prepared[0]?.mime,
+            index: 1,
+            total: 1,
+          },
+        };
+      }
+
+      // Use your formatting/output logic
+      await handleExtractedContent(this, contentForFormatting, null, contextForFormatting);
+
     } catch (e) {
       notice.hide();
       new Notice("Failed to extract text from images.");

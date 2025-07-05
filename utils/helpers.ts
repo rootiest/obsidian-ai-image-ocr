@@ -190,31 +190,89 @@ export function parseJsonResponse(
 }
 
 /**
+ * Replaces {{placeholders}} in a template string with values from a context object.
+ * Supports {{date:FORMAT}} for moment.js formatting and any key in the context object.
+ * Example: "Extracted at {{date:YYYY-MM-DD}} by {{user}}" with { user: "Alice" }
+ */
+export function formatTemplate(template: string, context: Record<string, any> = {}): string {
+  return template.replace(/{{(.*?)}}/g, (_, expr) => {
+    expr = expr.trim();
+    // Handle date/time formatting: {{date:FORMAT}}
+    if (expr.startsWith("date:")) {
+      const fmt = expr.slice(5).trim();
+      return window.moment ? window.moment().format(fmt) : "";
+    }
+    // Handle moment.js direct: {{YYYY-MM-DD}}
+    if (window.moment && /^[YMDHms\-:/ ]+$/.test(expr)) {
+      return window.moment().format(expr);
+    }
+    // Handle context keys: {{key}}
+    if (context && expr in context) {
+      return context[expr];
+    }
+    // Unknown placeholder, return as-is or empty
+    return "";
+  });
+}
+
+/**
+ * Applies all relevant templates (header, footer, per-image, batch) to the OCR result.
+ * @param plugin The plugin instance (for settings)
+ * @param content The OCR result: string for single, string[] for batch
+ * @param context The formatting context object
+ * @returns The final formatted string
+ */
+export function applyFormatting(
+  plugin: GPTImageOCRPlugin,
+  content: string | string[],
+  context: Record<string, any>
+): string {
+  // Batch mode: context.images is array, content is string[]
+  if (Array.isArray(context.images) && Array.isArray(content)) {
+    const batchHeader = formatTemplate(plugin.settings.batchHeaderTemplate || "", context);
+    const batchFooter = formatTemplate(plugin.settings.batchFooterTemplate || "", context);
+
+    // For each image, apply image header/footer
+    const formattedImages = content.map((imgText, i) => {
+      const imgContext = {
+        ...context,
+        image: context.images[i],
+        imageIndex: i + 1,
+        imageTotal: context.images.length,
+      };
+      const imgHeader = formatTemplate(plugin.settings.batchImageHeaderTemplate || "", imgContext);
+      const imgFooter = formatTemplate(plugin.settings.batchImageFooterTemplate || "", imgContext);
+      return [imgHeader, imgText, imgFooter].filter(Boolean).join("\n\n");
+    });
+
+    return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("\n\n");
+  }
+
+  // Single image mode
+  const header = formatTemplate(plugin.settings.headerTemplate || "", context);
+  const footer = formatTemplate(plugin.settings.footerTemplate || "", context);
+  return [header, content as string, footer].filter(Boolean).join("\n\n");
+}
+
+/**
  * Handles inserting or saving extracted OCR content based on user settings.
  */
 export async function handleExtractedContent(
   plugin: GPTImageOCRPlugin,
-  content: string,
+  content: string | string[],
   editor: Editor | null,
+  context: Record<string, any> = {}
 ) {
-  const moment = window.moment;
-
-  // Format header (if provided)
-  let header = plugin.settings.headerTemplate || "";
-  if (header.trim()) {
-    header = header.replace(/{{(.*?)}}/g, (_, fmt) =>
-      moment().format(fmt.trim()),
-    );
-    content = header + "\n\n" + content;
-  }
+  // Use the new formatting function
+  const finalContent = applyFormatting(plugin, content, context);
 
   if (!plugin.settings.outputToNewNote) {
     if (editor) {
       const cursor = editor.getCursor();
-      editor.replaceSelection(content);
+      editor.replaceSelection(finalContent);
 
       const newPos = editor.offsetToPos(
-        editor.posToOffset(cursor) + content.length
+        editor.posToOffset(cursor) + finalContent.length
       );
       editor.setCursor(newPos);
 
@@ -225,15 +283,8 @@ export async function handleExtractedContent(
     return;
   }
 
-  const name = plugin.settings.noteNameTemplate.replace(
-    /{{(.*?)}}/g,
-    (_, fmt) => moment().format(fmt.trim()),
-  );
-
-  const folder = plugin.settings.noteFolderPath
-    .replace(/{{(.*?)}}/g, (_, fmt) => moment().format(fmt.trim()))
-    .trim();
-
+  const name = formatTemplate(plugin.settings.noteNameTemplate, context);
+  const folder = formatTemplate(plugin.settings.noteFolderPath, context).trim();
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
 
   // Ensure folder exists
@@ -255,7 +306,7 @@ export async function handleExtractedContent(
   if (file instanceof TFile) {
     if (plugin.settings.appendIfExists) {
       const existing = await plugin.app.vault.read(file);
-      const updatedContent = existing + "\n\n" + content;
+      const updatedContent = existing + "\n\n" + finalContent;
 
       await plugin.app.vault.modify(file, updatedContent);
       const leaf = plugin.app.workspace.getLeaf(true);
@@ -283,11 +334,11 @@ export async function handleExtractedContent(
         counter++;
       }
 
-      file = await plugin.app.vault.create(uniquePath, content);
+      file = await plugin.app.vault.create(uniquePath, finalContent);
     }
   } else {
     try {
-      file = await plugin.app.vault.create(path, content);
+      file = await plugin.app.vault.create(path, finalContent);
     } catch (err) {
       new Notice(`Failed to create note at "${path}".`);
       console.error(err);

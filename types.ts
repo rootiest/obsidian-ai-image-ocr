@@ -19,6 +19,7 @@ export interface GPTImageOCRSettings {
   | "ollama"
   | "lmstudio"
   | "custom";
+
   openaiApiKey: string;
   geminiApiKey: string;
   ollamaUrl: string;
@@ -29,12 +30,26 @@ export interface GPTImageOCRSettings {
   customApiUrl: string;
   customApiModel: string;
   customApiKey: string;
+
+  // Single image settings
   customPrompt: string;
   outputToNewNote: boolean;
   noteFolderPath: string;
   noteNameTemplate: string;
   appendIfExists: boolean;
   headerTemplate: string;
+  footerTemplate: string;
+
+  // Batch image settings (add these)
+  batchCustomPrompt: string;
+  batchOutputToNewNote: boolean;
+  batchNoteFolderPath: string;
+  batchNoteNameTemplate: string;
+  batchAppendIfExists: boolean;
+  batchHeaderTemplate: string;
+  batchImageHeaderTemplate: string; // Optional header for each image in batch
+  batchImageFooterTemplate: string; // Optional footer for each image in batch
+  batchFooterTemplate: string;
 }
 
 export const DEFAULT_PROMPT_TEXT =
@@ -69,10 +84,22 @@ export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   customApiKey: "",
   customPrompt: "",
   outputToNewNote: false,
-  noteFolderPath: "",
+  noteFolderPath: "OCR Notes",
   noteNameTemplate: "Extracted OCR {{YYYY-MM-DD HH-mm-ss}}",
   appendIfExists: false,
   headerTemplate: "",
+  footerTemplate: "",
+
+  // Batch image settings
+  batchCustomPrompt: "",
+  batchOutputToNewNote: false,
+  batchNoteFolderPath: "OCR Notes",
+  batchNoteNameTemplate: "Batch OCR {{YYYY-MM-DD HH-mm-ss}}",
+  batchAppendIfExists: false,
+  batchHeaderTemplate: "",
+  batchImageHeaderTemplate: "",
+  batchImageFooterTemplate: "",
+  batchFooterTemplate: "",
 };
 
 
@@ -84,7 +111,6 @@ export interface OCRProvider {
   // Multi-image + prompt handler (used by batch and prompt-aware workflows)
   process?(images: PreparedImage[], prompt: string): Promise<string>;
 }
-
 
 export type GeminiPayload = {
   contents: Array<{
@@ -150,5 +176,26 @@ export interface PreparedImage {
   mime: string;
   size: number;
   source: string; // original source path or URL
+}
+
+export interface OCRFormatContext {
+  provider?: string;
+  providerName?: string;
+  model?: string;
+  prompt?: string;
+  image?: {
+    name?: string;
+    path?: string;
+    size?: number;
+    mime?: string;
+    [key: string]: any;
+  };
+  note?: {
+    name?: string;
+    path?: string;
+    folder?: string;
+    [key: string]: any;
+  };
+  [key: string]: any; // for extensibility
 }
 
