@@ -187,7 +187,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
         );
       const customUrlDesc = containerEl.createEl("div", { cls: "ai-image-ocr__setting-desc" });
       customUrlDesc.appendText("e.g. ");
-      customUrlDesc.createEl("code", { text: "http://localhost:11434" });
+      customUrlDesc.createEl("code", { text: "http://localhost:1234" });
 
       // LMStudio Model Name
       new Setting(containerEl)

@@ -48,7 +48,7 @@ export default class GPTImageOCRPlugin extends Plugin {
     // --- Loaded Image OCR ---
     this.addCommand({
       id: "extract-text-from-image",
-      name: "Extract Text from Image",
+      name: "Extract text from image",
       callback: async () => {
         const file = await selectImageFile();
         if (!file) {
@@ -117,7 +117,7 @@ export default class GPTImageOCRPlugin extends Plugin {
     // --- Embedded Image OCR ---
     this.addCommand({
       id: "extract-text-from-embedded-image",
-      name: "Extract Text from Embedded Image",
+      name: "Extract text from embedded image",
       editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
         const sel = editor.getSelection();
         const embedMatch = sel.match(/!\[\[.*?\]\]/) || sel.match(/!\[.*?\]\(.*?\)/);
@@ -223,7 +223,7 @@ export default class GPTImageOCRPlugin extends Plugin {
     // --- Batch Image Folder OCR ---
     this.addCommand({
       id: "extract-text-from-image-folder",
-      name: "Extract Text from Image Folder",
+      name: "Extract text from image folder",
       callback: () => this.extractTextFromImageFolder(),
     });
 
