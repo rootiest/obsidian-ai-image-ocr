@@ -7,6 +7,8 @@
 
 # AI Image OCR Plugin
 
+![banner](assets/banner.png)
+
 A plugin for Obsidian that extracts text from images using
 OCR powered by AI image recognition.
 
