@@ -243,103 +243,69 @@ export default class GPTImageOCRPlugin extends Plugin {
   getProvider(): OCRProvider {
     const { provider, openaiApiKey, geminiApiKey } = this.settings;
     const name = getFriendlyProviderNames(this.settings)[provider];
+    const prompt = this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT;
 
-    if (provider === "gemini") {
-      return new GeminiProvider(
-        geminiApiKey,
-        "models/gemini-2.5-flash",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "gemini-lite") {
-      return new GeminiProvider(
-        geminiApiKey,
-        "models/gemini-2.5-flash-lite-preview-06-17",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "gemini-pro") {
-      return new GeminiProvider(
-        geminiApiKey,
-        "models/gemini-2.5-pro",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "openai-mini") {
-      return new OpenAIProvider(
+    type ProviderFactory = () => OCRProvider;
+
+    const openAiFactory = (model: string): OCRProvider =>
+      new OpenAIProvider(
         openaiApiKey,
-        "gpt-4o-mini",
+        model,
         "https://api.openai.com/v1/chat/completions",
         "openai",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
+        prompt,
         name
       );
-    } else if (provider === "openai") {
-      return new OpenAIProvider(
-        openaiApiKey,
-        "gpt-4o",
-        "https://api.openai.com/v1/chat/completions",
-        "openai",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "openai-4.1") {
-      return new OpenAIProvider(
-        openaiApiKey,
-        "gpt-4.1",
-        "https://api.openai.com/v1/chat/completions",
-        "openai",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "openai-4.1-mini") {
-      return new OpenAIProvider(
-        openaiApiKey,
-        "gpt-4.1-mini",
-        "https://api.openai.com/v1/chat/completions",
-        "openai",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "openai-4.1-nano") {
-      return new OpenAIProvider(
-        openaiApiKey,
-        "gpt-4.1-nano",
-        "https://api.openai.com/v1/chat/completions",
-        "openai",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "ollama") {
-      return new OpenAIProvider(
-        "", // no api key
-        this.settings.ollamaModel || "llama3.2-vision",
-        this.settings.ollamaUrl?.replace(/\/$/, "") || "http://localhost:11434",
-        "ollama",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "lmstudio") {
-      return new OpenAIProvider(
-        "", // no api key
-        this.settings.lmstudioModel || "gemma3",
-        this.settings.lmstudioUrl?.replace(/\/$/, "") || "http://localhost:1234",
-        "lmstudio",
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else if (provider === "custom") {
-      return new OpenAIProvider(
-        this.settings.customApiKey || "",
-        this.settings.customApiModel || "gpt-4",
-        this.settings.customApiUrl || "https://example.com/v1/chat/completions",
-        "openai", // use openai-style response
-        this.settings.customPrompt?.trim() || DEFAULT_PROMPT_TEXT,
-        name
-      );
-    } else {
-      throw new Error("Unknown provider");
-    }
+
+    const factories: Record<GPTImageOCRSettings["provider"], ProviderFactory> = {
+      gemini: () =>
+        new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash", prompt, name),
+      "gemini-lite": () =>
+        new GeminiProvider(
+          geminiApiKey,
+          "models/gemini-2.5-flash-lite-preview-06-17",
+          prompt,
+          name
+        ),
+      "gemini-pro": () =>
+        new GeminiProvider(geminiApiKey, "models/gemini-2.5-pro", prompt, name),
+      "openai-mini": () => openAiFactory("gpt-4o-mini"),
+      openai: () => openAiFactory("gpt-4o"),
+      "openai-4.1": () => openAiFactory("gpt-4.1"),
+      "openai-4.1-mini": () => openAiFactory("gpt-4.1-mini"),
+      "openai-4.1-nano": () => openAiFactory("gpt-4.1-nano"),
+      ollama: () =>
+        new OpenAIProvider(
+          "",
+          this.settings.ollamaModel || "llama3.2-vision",
+          this.settings.ollamaUrl?.replace(/\/$/, "") || "http://localhost:11434",
+          "ollama",
+          prompt,
+          name
+        ),
+      lmstudio: () =>
+        new OpenAIProvider(
+          "",
+          this.settings.lmstudioModel || "gemma3",
+          this.settings.lmstudioUrl?.replace(/\/$/, "") || "http://localhost:1234",
+          "lmstudio",
+          prompt,
+          name
+        ),
+      custom: () =>
+        new OpenAIProvider(
+          this.settings.customApiKey || "",
+          this.settings.customApiModel || "gpt-4",
+          this.settings.customApiUrl || "https://example.com/v1/chat/completions",
+          "openai",
+          prompt,
+          name
+        ),
+    };
+
+    const factory = factories[provider];
+    if (!factory) throw new Error("Unknown provider");
+    return factory();
   }
 
   /**
