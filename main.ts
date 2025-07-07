@@ -19,20 +19,26 @@ import { OpenAIProvider } from "./providers/openai-provider";
 import { GeminiProvider } from "./providers/gemini-provider";
 import {
   getFriendlyProviderNames,
+  getProviderType,
+  buildOCRContext,
+} from "./utils/ocr";
+import {
   handleExtractedContent,
+} from "./utils/format";
+import {
   findRelevantImageEmbed,
   resolveInternalImagePath,
+  parseEmbedInfo,
+  templateHasImagePlaceholder,
+} from "./utils/embed";
+import {
   fetchExternalImageAsArrayBuffer,
   arrayBufferToBase64,
   getImageDimensionsFromArrayBuffer,
   selectImageFile,
   selectFolder,
-  getProviderType,
-  buildOCRContext,
-  parseEmbedInfo,
   getImageMimeType,
-  templateHasImagePlaceholder,
-} from "./utils/helpers";
+} from "./utils/image";
 import { GPTImageOCRSettingTab } from "./settings-tab";
 
 /**

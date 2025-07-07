@@ -5,9 +5,9 @@
 
 import { OCRProvider, DEFAULT_PROMPT_TEXT } from "../types";
 import { requestUrl } from "obsidian";
-import { parseJsonResponse } from "../utils/helpers";
+import { parseJsonResponse } from "../utils/format";
 import type { PreparedImage } from "../types";
-import { processSingleImage } from "../utils/ocr-utils";
+import { processSingleImage } from "../utils/ocr";
 
 /**
  * Handles OCR requests to Google Gemini API endpoints.
