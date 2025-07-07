@@ -5,7 +5,7 @@
 
 import { OCRProvider, OpenAIPayload, OllamaPayload, LmstudioPayload, DEFAULT_PROMPT_TEXT } from "../types";
 import { requestUrl } from "obsidian";
-import { parseJsonResponse } from "../utils/helpers";
+import { parseJsonResponse } from "../utils/format";
 import type { PreparedImage } from "../types";
 
 /**
