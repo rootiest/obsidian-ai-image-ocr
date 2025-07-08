@@ -3,7 +3,7 @@
   "name": "AI Image OCR",
   "version": "0.8.0",
   "minAppVersion": "0.15.0",
-  "description": "Extract text from handwritten notes and images using AI Vision models",
+  "description": "Extract text from handwritten notes and images using powerful AI Vision models",
   "author": "Rootiest",
   "authorUrl": "https://github.com/rootiest",
   "isDesktopOnly": false
