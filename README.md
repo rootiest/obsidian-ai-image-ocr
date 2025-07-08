@@ -269,15 +269,21 @@ for future releases of the plugin:
 
 ---
 
+## 🔐 Privacy
+
+The AI Image OCR Plugin does **not collect or store** any personal data, images,
+or extracted text. A proxy server may be used in specific cases to retrieve
+external images securely. Basic proxy request metadata may be temporarily
+logged for debugging, but is automatically removed within 7 days.
+
+For full details, see the [Privacy & Anonymity Wiki](https://github.com/rootiest/obsidian-aiwiki/Privacy).
+
+---
+
 ## License
 
 [MIT](./LICENSE)
 
-## Credits
+---
 
-- OpenAI GPT models
-- Google Gemini models
-- Ollama + open source vision models like LLaVA and BakLLaVA
-- LM Studio and compatible OpenAI-like APIs
-- Inspired by the limitations of traditional OCR (e.g., Tesseract)
-- Built with ❤️ for Obsidian
+_Built with ❤️ for Obsidian. Inspired by the limitations of traditional OCR._
