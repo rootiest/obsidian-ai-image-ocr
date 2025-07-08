@@ -1,6 +1,6 @@
 {
   "name": "obsidian-gpt-image-ocr",
-  "version": "0.3.1",
+  "version": "0.8.0",
   "description": "Extract text from images in your vault using OpenAI or Gemini OCR models.",
   "main": "main.js",
   "scripts": {
