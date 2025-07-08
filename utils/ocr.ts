@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Chris Laprade (chris@rootiest.com)
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 import type { OCRProvider, PreparedImage, GPTImageOCRSettings } from "../types";
 import { OpenAIProvider } from "../providers/openai-provider";
 import { GeminiProvider } from "../providers/gemini-provider";

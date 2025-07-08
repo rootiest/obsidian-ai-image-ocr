@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Chris Laprade (chris@rootiest.com)
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 import { normalizePath, TFile, Vault, Notice } from "obsidian";
 import type { CollectedImage, PreparedImage } from "../types";
 

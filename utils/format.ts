@@ -1,3 +1,8 @@
+// Copyright (c) 2025 Chris Laprade (chris@rootiest.com)
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 import { Editor, Notice, RequestUrlResponse, TFile } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import { moveCursorToEnd, scrollEditorToCursor } from "./editor";
