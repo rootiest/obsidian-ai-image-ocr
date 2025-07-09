@@ -50,8 +50,8 @@ export async function formatTemplate(
       
       if (imageBase64) {
         // Determine folder path for saving
-        const folderPath = context.isArray 
-          ? plugin.settings.batchNoteFolderPath 
+        const folderPath = Array.isArray(context.images)
+          ? plugin.settings.batchNoteFolderPath
           : plugin.settings.noteFolderPath;
         
         // Generate a filename
