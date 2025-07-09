@@ -7,6 +7,7 @@ import { Editor, Notice, RequestUrlResponse, TFile } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import { moveCursorToEnd, scrollEditorToCursor } from "./editor";
 import { saveBase64ImageToVault } from "./image";
+import { getAttachmentFolderPathForFile } from "./embed";
 
 /**
  * Parses a JSON API response and validates its structure if a validator is provided.
@@ -50,10 +51,8 @@ export async function formatTemplate(
       
       if (imageBase64) {
         // Determine folder path for saving
-        const folderPath = Array.isArray(context.images)
-          ? plugin.settings.batchNoteFolderPath
-          : plugin.settings.noteFolderPath;
-        
+        const folderPath = getAttachmentFolderPathForFile(plugin.app, context.image.path || context.image.source || "");
+
         // Generate a filename
         const extension = context.image.extension || "jpg";
         const imageName = `${context.image.name || "image"}-ocr.${extension}`;

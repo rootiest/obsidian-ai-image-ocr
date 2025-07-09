@@ -83,3 +83,26 @@ export function parseEmbedInfo(embedMarkdown: string, link: string) {
 export function templateHasImagePlaceholder(template: string): boolean {
   return /\{\{\s*image\.[^}]+\s*\}\}/.test(template);
 }
+
+/**
+ * Determines the attachment folder path for a given file, respecting Obsidian's settings.
+ * Handles "Same folder as current file" and template variables like {{filename}} and {{date}}.
+ */
+export function getAttachmentFolderPathForFile(app: App, file: TFile): string {
+  const attachmentPath = (app.vault as any).getConfig("attachmentFolderPath");
+
+  if (!attachmentPath || attachmentPath === "" || attachmentPath === "./") {
+    // "Same folder as current file"
+    return file.parent?.path ?? "";
+  }
+
+  // Replace template variables
+  let folder = attachmentPath
+    .replace(/\{\{filename\}\}/g, file.basename)
+    .replace(/\{\{date\}\}/g, (window as any).moment?.().format("YYYY-MM-DD") ?? "");
+
+  // Remove leading/trailing slashes
+  folder = folder.replace(/^\/+|\/+$/g, "");
+
+  return folder;
+}
