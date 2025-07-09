@@ -42,10 +42,12 @@ export function findRelevantImageEmbed(editor: Editor): {
 }
 
 /** Resolve an internal image path from a short link to a TFile */
-export function resolveInternalImagePath(app: App, link: string): TFile | null {
+export function resolveInternalImagePath(app: App, link: string): TFile | undefined {
   let file = app.vault.getAbstractFileByPath(link);
   if (file instanceof TFile) return file;
-  return app.vault.getFiles().find((f) => f.name === link) || null;
+  
+  const foundFile = app.vault.getFiles().find((f) => f.name === link);
+  return foundFile || undefined; // Return undefined instead of null
 }
 
 export function parseEmbedInfo(embedMarkdown: string, link: string) {

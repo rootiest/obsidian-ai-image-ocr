@@ -180,3 +180,53 @@ export function getImageMimeType(fileName: string): string {
       return "application/octet-stream";
   }
 }
+
+/**
+ * Saves a base64 image to the vault
+ */
+export async function saveBase64ImageToVault(
+  vault: Vault,
+  base64: string,
+  folderPath: string,
+  fileName: string,
+  mimeType: string = "image/jpeg"
+): Promise<TFile | null> {
+  try {
+    // Remove data URL prefix if present
+    let cleanBase64 = base64;
+    if (base64.includes(';base64,')) {
+      cleanBase64 = base64.split(';base64,')[1];
+    }
+    
+    // Convert base64 to binary array
+    const binary = atob(cleanBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    
+    // Ensure folder exists
+    if (folderPath) {
+      const folderExists = vault.getAbstractFileByPath(folderPath);
+      if (!folderExists) {
+        await vault.createFolder(folderPath);
+      }
+    }
+    
+    // Full path for the file
+    const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
+    
+    // Check if file exists
+    let existingFile = vault.getAbstractFileByPath(fullPath);
+    if (existingFile instanceof TFile) {
+      // File already exists
+      return existingFile;
+    }
+    
+    // Create file
+    return await vault.createBinary(fullPath, bytes.buffer);
+  } catch (e) {
+    console.error("Failed to save image to vault:", e);
+    return null;
+  }
+}

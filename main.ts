@@ -110,6 +110,7 @@ export default class GPTImageOCRPlugin extends Plugin {
                 mime,
                 width: dims?.width,
                 height: dims?.height,
+                base64: base64,
               },
             });
 
@@ -207,9 +208,11 @@ export default class GPTImageOCRPlugin extends Plugin {
               extension: embedInfo.extension,
               path: embedInfo.path,
               size: arrayBuffer?.byteLength ?? 0,
+              file: isExternal ? undefined : resolveInternalImagePath(this.app, link), // Use undefined instead of null
               mime,
               width: dims?.width,
               height: dims?.height,
+              base64: base64,
             },
           }) as any;
           // Add embed info to context for downstream consumers if needed
