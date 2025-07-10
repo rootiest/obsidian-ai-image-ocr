@@ -8,6 +8,7 @@ import { requestUrl } from "obsidian";
 import { parseJsonResponse } from "../utils/format";
 import type { PreparedImage } from "../types";
 import { processSingleImage } from "../utils/ocr";
+import { pluginLog } from "../utils/log";
 
 /**
  * Handles OCR requests to Google Gemini API endpoints.
@@ -60,10 +61,18 @@ export class GeminiProvider implements OCRProvider {
       const part = data.candidates[0]?.content?.parts?.[0]?.text?.trim();
       if (part) return part;
 
-      console.warn("Gemini response did not contain expected text:", data);
+      pluginLog(
+        `Gemini response did not contain expected text. Raw response: ${JSON.stringify(data)}`,
+        "warn",
+        true
+      );
       return "";
     } catch (err) {
-      console.error("Gemini fetch error:", err);
+      pluginLog(
+        `Gemini fetch error: ${err}`,
+        "error",
+        true
+      );
       return "";
     }
   }

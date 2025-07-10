@@ -45,6 +45,7 @@ import {
   getImageMimeType,
 } from "./utils/image";
 import { GPTImageOCRSettingTab } from "./settings-tab";
+import { pluginLog } from "./utils/log";
 
 /**
  * Main plugin class for Obsidian AI Image OCR.
@@ -63,7 +64,7 @@ export default class GPTImageOCRPlugin extends Plugin {
       callback: async () => {
         const file = await selectImageFile();
         if (!file) {
-          new Notice("No file selected.");
+          pluginLog("No file selected for OCR.", "notice", true);
           return;
         }
         const arrayBuffer = await file.arrayBuffer();
@@ -116,12 +117,16 @@ export default class GPTImageOCRPlugin extends Plugin {
 
             await handleExtractedContent(this, content, editor ?? null, context);
           } else {
-            new Notice("No content returned.");
+            pluginLog("No content returned from OCR.", "notice", true);
           }
         } catch (e) {
           notice.hide();
-          console.error("OCR failed:", e);
-          new Notice("Failed to extract text.");
+          if (e instanceof Error) {
+            pluginLog(e, "error", true);
+          } else {
+            pluginLog(`OCR failed: ${e}`, "error", true);
+          }
+          pluginLog("Failed to extract text.", "notice", true);
         }
       },
     });
@@ -136,7 +141,7 @@ export default class GPTImageOCRPlugin extends Plugin {
 
         const embed = findRelevantImageEmbed(editor);
         if (!embed) {
-          new Notice("No image embed found.");
+          pluginLog("No image embed found.", "notice", true);
           return;
         }
         const { link, isExternal, embedText } = embed;
@@ -146,7 +151,8 @@ export default class GPTImageOCRPlugin extends Plugin {
           try {
             arrayBuffer = await fetchExternalImageAsArrayBuffer(link);
           } catch (e) {
-            new Notice("Failed to fetch external image.");
+            pluginLog(`Failed to fetch external image.`, "notice", true);
+            pluginLog(`Failed to fetch external image: ${e}`, "error", true);
             return;
           }
         } else {
@@ -154,13 +160,13 @@ export default class GPTImageOCRPlugin extends Plugin {
           if (file instanceof TFile) {
             arrayBuffer = await this.app.vault.readBinary(file);
           } else {
-            new Notice("Image file not found in vault.");
+            pluginLog("Image file not found in vault.", "notice", true);
             return;
           }
         }
 
         if (!arrayBuffer) {
-          new Notice("Could not read image data.");
+          pluginLog("Could not read image data.", "notice", true);
           return;
         }
         const base64 = arrayBufferToBase64(arrayBuffer);
@@ -189,7 +195,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           notice.hide();
 
           if (!content) {
-            new Notice("No content returned.");
+            pluginLog("No content returned.", "notice", true);
             return;
           }
 
@@ -228,8 +234,12 @@ export default class GPTImageOCRPlugin extends Plugin {
           await handleExtractedContent(this, content, editor ?? null, context);
         } catch (e) {
           notice.hide();
-          console.error("OCR failed:", e);
-          new Notice("Failed to extract text.");
+          if (e instanceof Error) {
+            pluginLog(e, "error", true);
+          } else {
+            pluginLog(`OCR failed: ${e}`, "error", true);
+          }
+          pluginLog("Failed to extract text.", "notice", true);
         }
       },
     });
@@ -358,7 +368,7 @@ export default class GPTImageOCRPlugin extends Plugin {
     );
 
     if (prepared.length === 0) {
-      new Notice("No valid images could be prepared.");
+      pluginLog("No valid images could be prepared.", "notice", true);
       return;
     }
 
@@ -478,15 +488,15 @@ Repeat this for each image.
 
     } catch (e) {
       notice.hide();
-      new Notice("Failed to extract text from images.");
-      console.error(e);
+      pluginLog("Failed to extract text from images.", "notice", true);
+      pluginLog(e instanceof Error ? e : `OCR failed: ${e}`, "error", true);
     }
   }
 
   async insertOutputToEditor(text: string) {
     const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!activeView) {
-      new Notice("No active editor.");
+      pluginLog("No active editor to insert text into.", "notice", true);
       return;
     }
     const editor = activeView.editor;

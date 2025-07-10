@@ -3,11 +3,12 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { Editor, Notice, RequestUrlResponse, TFile } from "obsidian";
+import { Editor, RequestUrlResponse, TFile } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import { moveCursorToEnd, scrollEditorToCursor } from "./editor";
 import { saveBase64ImageToVault } from "./image";
 import { getAttachmentFolderPathForFile } from "./embed";
+import { pluginLog } from "./log";
 
 /**
  * Parses a JSON API response and validates its structure if a validator is provided.
@@ -23,7 +24,7 @@ export function parseJsonResponse(
     }
     return data;
   } catch (e) {
-    console.error("Failed to parse API response:", response.text);
+    pluginLog(`Failed to parse API response: ${response.text}`, "error", true);
     throw new Error("Invalid JSON or unexpected structure in API response.");
   }
 }
@@ -67,11 +68,7 @@ export async function formatTemplate(
         );
         
         if (!imageFile) {
-          console.error("Failed to save image to vault", { 
-            base64Length: imageBase64.length, 
-            folderPath, 
-            imageName 
-          });
+          pluginLog(`Failed to save image to vault: ${JSON.stringify({ base64Length: imageBase64.length, folderPath, imageName })}`, "error", true);
         }
       }
     }
@@ -82,7 +79,7 @@ export async function formatTemplate(
       template = template.replace(/{{image\.image}}/g, `![[${embedPath}]]`);
     } else {
       template = template.replace(/{{image\.image}}/g, "*[Image could not be embedded]*");
-      console.warn("Could not embed image - no valid source found", context.image);
+      pluginLog("Could not embed image - no valid source found", "warn", true);
     }
   }
   
@@ -254,7 +251,7 @@ export async function handleExtractedContent(
       editor.setCursor(newPos);
       scrollEditorToCursor(editor);
     } else {
-      new Notice("No active editor to paste into.");
+      pluginLog("No active editor to paste into.", "notice", true);
     }
     return;
   }
@@ -275,8 +272,8 @@ export async function handleExtractedContent(
       try {
         await plugin.app.vault.createFolder(folder);
       } catch (err) {
-        new Notice(`Failed to create folder "${folder}".`);
-        console.error(err);
+        pluginLog(`Failed to create folder: ${folder}`, "notice", true);
+        pluginLog(`Failed to create folder "${folder}": ${err}`, "error", true);
         return;
       }
     }
@@ -315,8 +312,8 @@ export async function handleExtractedContent(
     try {
       file = await plugin.app.vault.create(path, finalContent);
     } catch (err) {
-      new Notice(`Failed to create note at "${path}".`);
-      console.error(err);
+      pluginLog(`Failed to create note at "${path}"`, "notice", true);
+      pluginLog(`Failed to create note at "${path}": ${err}`, "error", true);
       return;
     }
   }

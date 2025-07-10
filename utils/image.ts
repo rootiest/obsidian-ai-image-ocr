@@ -3,8 +3,9 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { normalizePath, TFile, Vault, Notice } from "obsidian";
+import { normalizePath, TFile, Vault } from "obsidian";
 import type { CollectedImage, PreparedImage } from "../types";
+import { pluginLog } from "./log";
 
 /**
  * Resolves a list of markdown-style image links to CollectedImage[] format
@@ -27,7 +28,7 @@ export async function collectImageReferences(
         collected.push({ source: trimmed, file, isExternal: false });
       }
     } catch (e) {
-      console.warn("Failed to resolve image link:", trimmed, e);
+      pluginLog(`Failed to resolve image link: ${trimmed} - ${e}`, "warn", true);
     }
   }
   return collected;
@@ -68,7 +69,7 @@ export async function prepareImagePayload(
       source: img.source,
     };
   } catch (e) {
-    console.error("Failed to prepare image:", img.source, e);
+    pluginLog(`Failed to prepare image: ${img.source} - ${e}`, "error", true);
     return null;
   }
 }
@@ -90,11 +91,11 @@ export async function fetchExternalImageAsArrayBuffer(
       if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
       return await resp.arrayBuffer();
     } catch (e2) {
-      console.error("Failed to fetch image.");
-      new Notice(
-        "Failed to fetch image.\n" +
-          "If you can see the image in preview, right-click and 'Save image to vault',\n" +
-          "then run OCR on the saved copy."
+      pluginLog(`Failed to fetch image: ${e2}`, "error", true);
+      pluginLog(
+        `Failed to fetch image.`,
+        "notice",
+        true
       );
       return null;
     }
@@ -226,7 +227,7 @@ export async function saveBase64ImageToVault(
     // Create file
     return await vault.createBinary(fullPath, bytes.buffer);
   } catch (e) {
-    console.error("Failed to save image to vault:", e);
+    pluginLog(`Failed to save image to vault: ${e}`, "error", true);
     return null;
   }
 }

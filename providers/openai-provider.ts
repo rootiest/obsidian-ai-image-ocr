@@ -7,6 +7,7 @@ import { OCRProvider, OpenAIPayload, OllamaPayload, LmstudioPayload, DEFAULT_PRO
 import { requestUrl } from "obsidian";
 import { parseJsonResponse } from "../utils/format";
 import type { PreparedImage } from "../types";
+import { pluginLog } from "../utils/log";
 
 /**
  * Handles OCR requests to OpenAI-compatible, Ollama, or LMStudio endpoints.
@@ -127,10 +128,14 @@ export class OpenAIProvider implements OCRProvider {
 
       if (content) return content;
 
-      console.warn(`${this.provider} response did not contain expected text:`, data);
+      pluginLog(
+        `${this.provider} response did not contain expected text. Raw response: ${JSON.stringify(data)}`,
+        "warn",
+        true
+      );
       return "";
     } catch (err) {
-      console.error(`${this.provider} fetch error:`, err);
+      pluginLog(`${this.provider} fetch error: ${err}`, "error", true);
       return "";
     }
   }

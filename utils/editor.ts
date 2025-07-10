@@ -4,6 +4,7 @@
 // https://opensource.org/licenses/MIT
 
 import { Editor, EditorPosition } from "obsidian";
+import { pluginLog } from "./log";
 
 /**
  * Moves the editor cursor to the end of the document and scrolls into view.
@@ -36,6 +37,10 @@ export function scrollEditorToCursor(editor: Editor) {
       );
     }
   } catch (e) {
-    console.warn("scrollIntoView failed or is unsupported in this version.", e);
+    pluginLog(
+      `scrollIntoView failed or is unsupported in this version: ${e}`,
+      "warn",
+      true
+    );
   }
 }
