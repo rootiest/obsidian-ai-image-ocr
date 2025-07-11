@@ -54,6 +54,7 @@ export interface GPTImageOCRSettings {
   ollamaModelFriendlyName?: string;
   lmstudioModelFriendlyName?: string;
   customModelFriendlyName?: string;
+  debugMode: boolean;
 }
 
 export const DEFAULT_PROMPT_TEXT =
@@ -126,6 +127,7 @@ export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   ollamaModelFriendlyName: "",
   lmstudioModelFriendlyName: "",
   customModelFriendlyName: "",
+  debugMode: false,
 };
 
 

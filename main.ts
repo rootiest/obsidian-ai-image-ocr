@@ -45,7 +45,7 @@ import {
   getImageMimeType,
 } from "./utils/image";
 import { GPTImageOCRSettingTab } from "./settings-tab";
-import { pluginLog, pluginLogger } from "./utils/log";
+import { pluginLog, pluginLogger, setDebugMode } from "./utils/log";
 
 /**
  * Main plugin class for Obsidian AI Image OCR.
@@ -57,6 +57,7 @@ export default class GPTImageOCRPlugin extends Plugin {
   async onload(): Promise<void> {
     pluginLogger("Loading plugin...");
     await this.loadSettings();
+    setDebugMode(this.settings.debugMode); // <-- Add this line
     pluginLogger("Settings loaded");
 
     // --- Loaded Image OCR ---
@@ -339,6 +340,7 @@ export default class GPTImageOCRPlugin extends Plugin {
    */
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    setDebugMode(this.settings.debugMode); // <-- Also add here for reloads
     pluginLogger("Settings loaded from disk");
   }
 

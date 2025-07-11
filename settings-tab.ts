@@ -6,6 +6,7 @@
 import { PluginSettingTab, App, Setting } from "obsidian";
 import GPTImageOCRPlugin from "./main";
 import type { GPTImageOCRSettings } from "./types";
+import { setDebugMode } from "./utils/log";
 
 /**
  * Settings tab UI for the plugin, allowing users to configure providers and options.
@@ -559,5 +560,18 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
             }),
         );
     }
+
+    new Setting(containerEl)
+      .setName("Debug mode")
+      .setDesc("Enable debug mode to log additional information to the console.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.debugMode)
+          .onChange(async (value) => {
+            this.plugin.settings.debugMode = value;
+            setDebugMode(value); // Update the global variable
+            await this.plugin.saveSettings();
+          }),
+      );
   }
 }

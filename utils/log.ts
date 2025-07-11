@@ -16,12 +16,12 @@ export function setDebugMode(enabled: boolean) {
  * Outputs a message to the console or as a notification, depending on type and debug mode.
  * @param message The message or error to output.
  * @param type 'log' | 'warn' | 'error' | 'notice' (default: 'log')
- * @param always If true, output even if debug mode is off.
+ * @param always If true, output even if debug mode is off. (default: true)
  */
 export function pluginLog(
   message: string | Error,
   type: "log" | "warn" | "error" | "notice" | "permanent" = "log",
-  always: boolean = false
+  always: boolean = true
 ) {
   if (!DEBUG_MODE && !always) return;
 
@@ -62,6 +62,9 @@ export function pluginLog(
 
 /**
  * Alias for pluginLog used for debug output.
+ * @param message The message or error to output.
+ * @param type 'log' | 'warn' | 'error' | 'notice' (default: 'log')
+ * @param always If true, output even if debug mode is off. (default: false)
  */
 export function pluginLogger(
   message: string | Error,
