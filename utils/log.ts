@@ -59,3 +59,14 @@ export function pluginLog(
     }
   }
 }
+
+/**
+ * Alias for pluginLog used for debug output.
+ */
+export function pluginLogger(
+  message: string | Error,
+  type: "log" | "warn" | "error" | "notice" | "permanent" = "log",
+  always: boolean = false
+) {
+  pluginLog(message, type, always);
+}

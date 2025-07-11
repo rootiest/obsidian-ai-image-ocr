@@ -5,7 +5,7 @@
 
 import { normalizePath, TFile, Vault } from "obsidian";
 import type { CollectedImage, PreparedImage } from "../types";
-import { pluginLog } from "./log";
+import { pluginLog, pluginLogger } from "./log";
 
 /**
  * Resolves a list of markdown-style image links to CollectedImage[] format
@@ -14,6 +14,7 @@ export async function collectImageReferences(
   imageLinks: string[],
   vault: Vault
 ): Promise<CollectedImage[]> {
+  pluginLogger(`Collecting references for ${imageLinks.length} links`);
   const collected: CollectedImage[] = [];
   for (const link of imageLinks) {
     const trimmed = link.trim();
@@ -31,6 +32,7 @@ export async function collectImageReferences(
       pluginLog(`Failed to resolve image link: ${trimmed} - ${e}`, "warn", true);
     }
   }
+  pluginLogger(`Collected ${collected.length} image references`);
   return collected;
 }
 
@@ -41,6 +43,7 @@ export async function prepareImagePayload(
   img: CollectedImage,
   vault: Vault
 ): Promise<PreparedImage | null> {
+  pluginLogger(`Preparing image ${img.source}`);
   try {
     let arrayBuffer: ArrayBuffer | null;
     let name: string;
@@ -59,7 +62,7 @@ export async function prepareImagePayload(
     }
     const base64 = arrayBufferToBase64(arrayBuffer);
     const dims = await getImageDimensionsFromArrayBuffer(arrayBuffer);
-    return {
+    const result = {
       name,
       base64,
       mime,
@@ -68,6 +71,8 @@ export async function prepareImagePayload(
       height: dims?.height,
       source: img.source,
     };
+    pluginLogger(`Prepared image ${img.source}`);
+    return result;
   } catch (e) {
     pluginLog(`Failed to prepare image: ${img.source} - ${e}`, "error", true);
     return null;
@@ -80,16 +85,21 @@ export async function prepareImagePayload(
 export async function fetchExternalImageAsArrayBuffer(
   url: string
 ): Promise<ArrayBuffer | null> {
+  pluginLogger(`Fetching external image ${url}`);
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return await resp.arrayBuffer();
+    const buf = await resp.arrayBuffer();
+    pluginLogger(`Fetched image from source ${url}`);
+    return buf;
   } catch (e) {
     try {
       const proxyUrl = `https://corsproxy.rootiest.com/proxy?url=${encodeURIComponent(url)}`;
       const resp = await fetch(proxyUrl);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
-      return await resp.arrayBuffer();
+      const buf = await resp.arrayBuffer();
+      pluginLogger(`Fetched image via proxy for ${url}`);
+      return buf;
     } catch (e2) {
       pluginLog(`Failed to fetch image: ${e2}`, "error", true);
       pluginLog(
@@ -141,6 +151,7 @@ export async function selectImageFile(): Promise<File | null> {
     input.accept = "image/*";
     input.onchange = () => {
       const file = input.files?.[0] || null;
+      pluginLogger(file ? `Selected file ${file.name}` : "No file selected");
       resolve(file);
     };
     input.click();
@@ -154,7 +165,9 @@ export async function selectFolder(): Promise<FileList | null> {
     input.type = "file";
     (input as any).webkitdirectory = true;
     input.onchange = () => {
-      resolve(input.files || null);
+      const files = input.files || null;
+      pluginLogger(files ? `Selected folder with ${files.length} files` : "No folder selected");
+      resolve(files);
     };
     input.click();
   });
@@ -192,6 +205,7 @@ export async function saveBase64ImageToVault(
   fileName: string,
   mimeType: string = "image/jpeg"
 ): Promise<TFile | null> {
+  pluginLogger(`Saving image ${fileName} to ${folderPath}`);
   try {
     // Remove data URL prefix if present
     let cleanBase64 = base64;
@@ -225,7 +239,9 @@ export async function saveBase64ImageToVault(
     }
     
     // Create file
-    return await vault.createBinary(fullPath, bytes.buffer);
+    const created = await vault.createBinary(fullPath, bytes.buffer);
+    pluginLogger(`Saved image to ${fullPath}`);
+    return created;
   } catch (e) {
     pluginLog(`Failed to save image to vault: ${e}`, "error", true);
     return null;

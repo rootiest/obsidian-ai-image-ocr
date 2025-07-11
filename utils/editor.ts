@@ -4,12 +4,13 @@
 // https://opensource.org/licenses/MIT
 
 import { Editor, EditorPosition } from "obsidian";
-import { pluginLog } from "./log";
+import { pluginLog, pluginLogger } from "./log";
 
 /**
  * Moves the editor cursor to the end of the document and scrolls into view.
  */
 export function moveCursorToEnd(editor: Editor) {
+  pluginLogger("Moving cursor to end");
   requestAnimationFrame(() => {
     const lastLine = editor.lastLine();
     const lastCh = editor.getLine(lastLine)?.length || 0;
@@ -22,6 +23,7 @@ export function moveCursorToEnd(editor: Editor) {
  * Scrolls the editor view to the current cursor position.
  */
 export function scrollEditorToCursor(editor: Editor) {
+  pluginLogger("Scrolling editor to cursor");
   try {
     const maybeCM = (editor as Editor & { cm?: unknown }).cm;
     if (
