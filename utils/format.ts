@@ -198,7 +198,9 @@ export async function applyFormatting(
 ): Promise<string> {
   pluginLogger("Applying formatting");
   if (Array.isArray(context.images) && Array.isArray(content)) {
+    pluginLogger("Batch Header formatting started");
     const batchHeader = await formatTemplate(plugin, plugin.settings.batchHeaderTemplate || "", context);
+    pluginLogger("Batch Footer formatting started");
     const batchFooter = await formatTemplate(plugin, plugin.settings.batchFooterTemplate || "", context);
     
     const formattedImages = await Promise.all(content.map(async (imgText, i) => {
@@ -209,8 +211,9 @@ export async function applyFormatting(
         imageTotal: context.images.length,
         originalBase64: context._originalBase64?.[i]
       };
-      
+      pluginLogger("Batch Image Header formatting started");
       const imgHeader = await formatTemplate(plugin, plugin.settings.batchImageHeaderTemplate || "", imgContext);
+      pluginLogger("Batch Image Footer formatting started");
       const imgFooter = await formatTemplate(plugin, plugin.settings.batchImageFooterTemplate || "", imgContext);
       
       return [imgHeader, imgText, imgFooter ? "\n" + imgFooter : ""].filter(Boolean).join("");
@@ -221,7 +224,9 @@ export async function applyFormatting(
     return result;
   }
   
+  pluginLogger("Single Image Header formatting started");
   const header = await formatTemplate(plugin, plugin.settings.headerTemplate || "", context);
+  pluginLogger("Single Image Footer formatting started");
   const footer = await formatTemplate(plugin, plugin.settings.footerTemplate || "", context);
   
   const result = [header, content as string, footer ? "\n" + footer : ""].filter(Boolean).join("");
