@@ -45,7 +45,7 @@ import {
   getImageMimeType,
 } from "./utils/image";
 import { GPTImageOCRSettingTab } from "./settings-tab";
-import { pluginLog } from "./utils/log";
+import { pluginLog, pluginLogger } from "./utils/log";
 
 /**
  * Main plugin class for Obsidian AI Image OCR.
@@ -55,13 +55,16 @@ export default class GPTImageOCRPlugin extends Plugin {
   settings: GPTImageOCRSettings;
 
   async onload(): Promise<void> {
+    pluginLogger("Loading plugin...");
     await this.loadSettings();
+    pluginLogger("Settings loaded");
 
     // --- Loaded Image OCR ---
     this.addCommand({
       id: "extract-text-from-image",
       name: "Extract text from image",
       callback: async () => {
+        pluginLogger("Command: extract text from image");
         const file = await selectImageFile();
         if (!file) {
           pluginLog("No file selected for OCR.", "notice", true);
@@ -116,6 +119,7 @@ export default class GPTImageOCRPlugin extends Plugin {
             });
 
             await handleExtractedContent(this, content, editor ?? null, context);
+            pluginLogger("Finished processing selected image");
           } else {
             pluginLog("No content returned from OCR.", "notice", true);
           }
@@ -136,6 +140,7 @@ export default class GPTImageOCRPlugin extends Plugin {
       id: "extract-text-from-embedded-image",
       name: "Extract text from embedded image",
       editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+        pluginLogger("Command: extract text from embedded image");
         const sel = editor.getSelection();
         const embedMatch = sel.match(/!\[\[.*?\]\]/) || sel.match(/!\[.*?\]\(.*?\)/);
 
@@ -232,6 +237,7 @@ export default class GPTImageOCRPlugin extends Plugin {
           // Otherwise respect user settings
           // Build the context object
           await handleExtractedContent(this, content, editor ?? null, context);
+          pluginLogger("Finished processing embedded image");
         } catch (e) {
           notice.hide();
           if (e instanceof Error) {
@@ -253,6 +259,7 @@ export default class GPTImageOCRPlugin extends Plugin {
 
 
     this.addSettingTab(new GPTImageOCRSettingTab(this.app, this));
+    pluginLogger("Plugin loaded");
   }
 
   /**
@@ -323,6 +330,7 @@ export default class GPTImageOCRPlugin extends Plugin {
 
     const factory = factories[provider];
     if (!factory) throw new Error("Unknown provider");
+    pluginLogger(`Using provider ${provider}`);
     return factory();
   }
 
@@ -331,6 +339,7 @@ export default class GPTImageOCRPlugin extends Plugin {
    */
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    pluginLogger("Settings loaded from disk");
   }
 
   /**
@@ -338,12 +347,14 @@ export default class GPTImageOCRPlugin extends Plugin {
    */
   async saveSettings() {
     await this.saveData(this.settings);
+    pluginLogger("Settings saved to disk");
   }
 
   /**
    * Collects images from a folder for text extraction
   */
   async extractTextFromImageFolder() {
+    pluginLogger("Command: extract text from image folder");
     const files = await selectFolder();
     if (!files) return;
 
@@ -485,6 +496,7 @@ Repeat this for each image.
         // Single batch note
         await handleExtractedContent(this, contentForFormatting, null, contextForFormatting);
       }
+      pluginLogger("Finished processing image folder");
 
     } catch (e) {
       notice.hide();
@@ -494,6 +506,7 @@ Repeat this for each image.
   }
 
   async insertOutputToEditor(text: string) {
+    pluginLogger(`Inserting output to editor (${text.length} chars)`);
     const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!activeView) {
       pluginLog("No active editor to insert text into.", "notice", true);
@@ -501,6 +514,7 @@ Repeat this for each image.
     }
     const editor = activeView.editor;
     editor.replaceSelection(text + "\n");
+    pluginLogger("Output inserted into editor");
   }
 
 }

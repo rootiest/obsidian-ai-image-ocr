@@ -8,7 +8,7 @@ import GPTImageOCRPlugin from "../main";
 import { moveCursorToEnd, scrollEditorToCursor } from "./editor";
 import { saveBase64ImageToVault } from "./image";
 import { getAttachmentFolderPathForFile } from "./embed";
-import { pluginLog } from "./log";
+import { pluginLog, pluginLogger } from "./log";
 
 /**
  * Parses a JSON API response and validates its structure if a validator is provided.
@@ -22,6 +22,7 @@ export function parseJsonResponse(
     if (validator && !validator(data)) {
       throw new Error("Response format validation failed.");
     }
+    pluginLogger("Parsed JSON response successfully");
     return data;
   } catch (e) {
     pluginLog(`Failed to parse API response: ${response.text}`, "error", true);
@@ -35,9 +36,10 @@ export function parseJsonResponse(
  */
 export async function formatTemplate(
   plugin: GPTImageOCRPlugin | null,
-  template: string, 
+  template: string,
   context: Record<string, any> = {}
 ): Promise<string> {
+  pluginLogger("Formatting template");
   // Special handling for image.image placeholder
   if (template.includes("{{image.image}}") && context.image && plugin) {
     let imageFile: TFile | null = null;
@@ -84,7 +86,7 @@ export async function formatTemplate(
   }
   
   // Regular placeholder handling (unchanged)
-  return template.replace(/{{(.*?)}}/g, (_, expr) => {
+  const formatted = template.replace(/{{(.*?)}}/g, (_, expr) => {
     expr = expr.trim();
     if (expr === "image.image") return ""; // Already handled above
     
@@ -100,6 +102,8 @@ export async function formatTemplate(
     const val = getValue(expr, context);
     return val != null ? String(val) : "";
   });
+  pluginLogger("Template formatted");
+  return formatted;
 }
 
 // Extract the existing getValue logic to a separate function
@@ -192,6 +196,7 @@ export async function applyFormatting(
   content: string | string[],
   context: Record<string, any>
 ): Promise<string> {
+  pluginLogger("Applying formatting");
   if (Array.isArray(context.images) && Array.isArray(content)) {
     const batchHeader = await formatTemplate(plugin, plugin.settings.batchHeaderTemplate || "", context);
     const batchFooter = await formatTemplate(plugin, plugin.settings.batchFooterTemplate || "", context);
@@ -211,13 +216,17 @@ export async function applyFormatting(
       return [imgHeader, imgText, imgFooter ? "\n" + imgFooter : ""].filter(Boolean).join("");
     }));
     
-    return [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("");
+    const result = [batchHeader, ...formattedImages, batchFooter].filter(Boolean).join("");
+    pluginLogger("Batch formatting complete");
+    return result;
   }
   
   const header = await formatTemplate(plugin, plugin.settings.headerTemplate || "", context);
   const footer = await formatTemplate(plugin, plugin.settings.footerTemplate || "", context);
   
-  return [header, content as string, footer ? "\n" + footer : ""].filter(Boolean).join("");
+  const result = [header, content as string, footer ? "\n" + footer : ""].filter(Boolean).join("");
+  pluginLogger("Formatting complete");
+  return result;
 }
 
 /** Handles inserting or saving extracted OCR content based on user settings */
@@ -227,6 +236,7 @@ export async function handleExtractedContent(
   editor: Editor | null,
   context: Record<string, any> = {}
 ) {
+  pluginLogger("Handling extracted content");
   if (!editor) {
     editor = plugin.app.workspace.activeEditor?.editor ?? null;
   }
@@ -319,6 +329,7 @@ export async function handleExtractedContent(
   }
   if (!(file instanceof TFile)) return;
   await plugin.app.workspace.getLeaf(true).openFile(file);
+  pluginLogger("Opened created note");
   setTimeout(() => {
     const activeEditor = plugin.app.workspace.activeEditor?.editor;
     if (activeEditor) {
