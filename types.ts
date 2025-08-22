@@ -54,6 +54,7 @@ export interface GPTImageOCRSettings {
   ollamaModelFriendlyName?: string;
   lmstudioModelFriendlyName?: string;
   customModelFriendlyName?: string;
+  debugMode: boolean;
 }
 
 export const DEFAULT_PROMPT_TEXT =
@@ -73,7 +74,7 @@ export const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], st
   "gemini-pro": "Google",
   "ollama": "Ollama",
   "lmstudio": "LMStudio",
-  "custom": "Custom Provider"
+  "custom": "Custom provider"
 };
 
 export const FRIENDLY_MODEL_NAMES: Record<string, string> = {
@@ -126,6 +127,7 @@ export const DEFAULT_SETTINGS: GPTImageOCRSettings = {
   ollamaModelFriendlyName: "",
   lmstudioModelFriendlyName: "",
   customModelFriendlyName: "",
+  debugMode: false,
 };
 
 

@@ -7,6 +7,7 @@ import { App, Editor, TFile } from "obsidian";
 
 /**
  * Finds the most relevant image embed in the selected text, or nearest above cursor.
+ * Only returns image embeds (png, jpg, jpeg, gif, webp, bmp, svg).
  */
 export function findRelevantImageEmbed(editor: Editor): {
   link: string;
@@ -14,38 +15,49 @@ export function findRelevantImageEmbed(editor: Editor): {
   embedType: "internal" | "external";
   embedText: string;
 } | null {
+  const imageExt = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+
+  const isImage = (link: string) => imageExt.test(link);
+
   const sel = editor.getSelection();
   let match = sel.match(/!\[\[(.+?)\]\]/);
   if (match) {
     const link = match[1].split("|")[0].trim();
-    return { link, isExternal: false, embedType: "internal", embedText: match[0] };
+    if (isImage(link)) {
+      return { link, isExternal: false, embedType: "internal", embedText: match[0] };
+    }
   }
   match = sel.match(/!\[.*?\]\((.+?)\)/);
   if (match) {
     const link = match[1].split(" ")[0].replace(/["']/g, "");
-    return { link, isExternal: /^https?:\/\//i.test(link), embedType: "external", embedText: match[0] };
+    if (isImage(link)) {
+      return { link, isExternal: /^https?:\/\//i.test(link), embedType: "external", embedText: match[0] };
+    }
   }
   for (let i = editor.getCursor().line; i >= 0; i--) {
     const line = editor.getLine(i);
     let embedMatch = line.match(/!\[\[(.+?)\]\]/);
     if (embedMatch) {
       const link = embedMatch[1].split("|")[0].trim();
-      return { link, isExternal: false, embedType: "internal", embedText: embedMatch[0] };
+      if (isImage(link)) {
+        return { link, isExternal: false, embedType: "internal", embedText: embedMatch[0] };
+      }
     }
     embedMatch = line.match(/!\[.*?\]\((.+?)\)/);
     if (embedMatch) {
       const link = embedMatch[1].split(" ")[0].replace(/["']/g, "");
-      return { link, isExternal: /^https?:\/\//i.test(link), embedType: "external", embedText: embedMatch[0] };
+      if (isImage(link)) {
+        return { link, isExternal: /^https?:\/\//i.test(link), embedType: "external", embedText: embedMatch[0] };
+      }
     }
   }
   return null;
 }
 
-/** Resolve an internal image path from a short link to a TFile */
-export function resolveInternalImagePath(app: App, link: string): TFile | null {
-  let file = app.vault.getAbstractFileByPath(link);
-  if (file instanceof TFile) return file;
-  return app.vault.getFiles().find((f) => f.name === link) || null;
+/** Resolve an internal image path from a short link to a TFile using MetadataCache */
+export function resolveInternalImagePath(app: App, link: string, sourcePath: string): TFile | undefined {
+  // Use MetadataCache.getFirstLinkpathDest for best match resolution
+  return app.metadataCache.getFirstLinkpathDest(link, sourcePath) || undefined;
 }
 
 export function parseEmbedInfo(embedMarkdown: string, link: string) {
@@ -80,4 +92,27 @@ export function parseEmbedInfo(embedMarkdown: string, link: string) {
 
 export function templateHasImagePlaceholder(template: string): boolean {
   return /\{\{\s*image\.[^}]+\s*\}\}/.test(template);
+}
+
+/**
+ * Determines the attachment folder path for a given file, respecting Obsidian's settings.
+ * Handles "Same folder as current file" and template variables like {{filename}} and {{date}}.
+ */
+export function getAttachmentFolderPathForFile(app: App, file: TFile): string {
+  const attachmentPath = (app.vault as any).getConfig("attachmentFolderPath");
+
+  if (!attachmentPath || attachmentPath === "" || attachmentPath === "./") {
+    // "Same folder as current file"
+    return file.parent?.path ?? "";
+  }
+
+  // Replace template variables
+  let folder = attachmentPath
+    .replace(/\{\{filename\}\}/g, file.basename)
+    .replace(/\{\{date\}\}/g, (window as any).moment?.().format("YYYY-MM-DD") ?? "");
+
+  // Remove leading/trailing slashes
+  folder = folder.replace(/^\/+|\/+$/g, "");
+
+  return folder;
 }

@@ -139,6 +139,7 @@ for detailed documentation.
   - Create or append to another note
 - Header and footer template creation with `{{placeholder}}` support
 - File/folder naming template creation with `{{placeholder}}` support
+- Use `{{image.image}}` to embed source image in extracted output header/footer
 - Extract from embedded images or via OS-native file/folder pickers
 - Built-in CORS proxy fallback for external images
 
@@ -221,6 +222,11 @@ you may customize the output behavior.
    "Extract text from image folder".
 2. Select a directory which contains images.
 3. Text will be extracted from each image and inserted per your configuration.
+
+> [!TIP]
+> See the
+> [Token Limits](https://github.com/rootiest/obsidian-ai-image-ocr/wiki/Tips#token-limits)
+> Wiki for tips on maximizing token use when extracting from batch images.
 
 ## Notes
 

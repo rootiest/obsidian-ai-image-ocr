@@ -3,6 +3,9 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import {
+  TFile,
+} from "obsidian";
 import type { OCRProvider, PreparedImage, GPTImageOCRSettings } from "../types";
 import { OpenAIProvider } from "../providers/openai-provider";
 import { GeminiProvider } from "../providers/gemini-provider";
@@ -105,6 +108,8 @@ export function buildOCRContext({
     created?: string;
     modified?: string;
     altText?: string;
+    base64?: string;
+    file?: TFile; // Add this field
     gps?: { latitude?: number; longitude?: number; altitude?: number };
   }>;
   singleImage?: {
@@ -118,6 +123,8 @@ export function buildOCRContext({
     created?: string;
     modified?: string;
     altText?: string;
+    base64?: string;
+    file?: TFile; // Add this field
     gps?: { latitude?: number; longitude?: number; altitude?: number };
   };
 }) {
@@ -126,35 +133,31 @@ export function buildOCRContext({
     model: { id: modelId, name: modelName },
     prompt,
   };
+  
   if (images && images.length > 1) {
     return {
       ...base,
       images: images.map((img, i) => ({
         name: img.name.replace(/\.[^.]*$/, ""),
-        extension: img.name.split(".").pop() || "",
+        extension: img.extension || img.name.split(".").pop() || "",
         path: img.path,
         size: img.size,
         mime: img.mime,
         width: img.width,
         height: img.height,
+        file: img.file, // Include file reference if it exists
+        base64: img.base64, // Include base64 if it exists
         index: i + 1,
         total: images.length,
       })),
     };
   } else if (singleImage || (images && images.length === 1)) {
-    const img = singleImage || images![0];
+    const image = singleImage || (images && images[0]);
     return {
       ...base,
       image: {
-        name: img.name.replace(/\.[^.]*$/, ""),
-        extension: img.name.split(".").pop() || "",
-        path: img.path,
-        size: img.size,
-        mime: img.mime,
-        width: img.width,
-        height: img.height,
-        index: 1,
-        total: 1,
+        ...image,
+        // No need to explicitly handle the file field as it's now part of the type
       },
     };
   } else {
