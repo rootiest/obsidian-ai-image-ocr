@@ -162,7 +162,8 @@ export default class GPTImageOCRPlugin extends Plugin {
             return;
           }
         } else {
-          const file = resolveInternalImagePath(this.app, link);
+          const sourcePath = (ctx as any)?.file?.path ?? "";
+          const file = resolveInternalImagePath(this.app, link, sourcePath);
           if (file instanceof TFile) {
             arrayBuffer = await this.app.vault.readBinary(file);
           } else {
@@ -220,7 +221,7 @@ export default class GPTImageOCRPlugin extends Plugin {
               extension: embedInfo.extension,
               path: embedInfo.path,
               size: arrayBuffer?.byteLength ?? 0,
-              file: isExternal ? undefined : resolveInternalImagePath(this.app, link), // Use undefined instead of null
+              file: isExternal ? undefined : resolveInternalImagePath(this.app, link, (ctx as any)?.file?.path ?? ""), // Use undefined instead of null
               mime,
               width: dims?.width,
               height: dims?.height,

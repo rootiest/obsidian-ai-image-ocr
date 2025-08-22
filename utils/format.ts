@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { Editor, RequestUrlResponse, TFile } from "obsidian";
+import { Editor, RequestUrlResponse, TFile, moment, normalizePath } from "obsidian";
 import GPTImageOCRPlugin from "../main";
 import { moveCursorToEnd, scrollEditorToCursor } from "./editor";
 import { saveBase64ImageToVault } from "./image";
@@ -89,16 +89,16 @@ export async function formatTemplate(
   const formatted = template.replace(/{{(.*?)}}/g, (_, expr) => {
     expr = expr.trim();
     if (expr === "image.image") return ""; // Already handled above
-    
+
     // Rest of replacement logic is unchanged
     if (expr.startsWith("date:")) {
       const fmt = expr.slice(5).trim();
-      return (window as any).moment ? (window as any).moment().format(fmt) : "";
+      return moment ? moment().format(fmt) : "";
     }
-    if ((window as any).moment && /^[YMDHms\-:/ ]+$/.test(expr)) {
-      return (window as any).moment().format(expr);
+    if (moment && /^[YMDHms\-:/ ]+$/.test(expr)) {
+      return moment().format(expr);
     }
-    
+
     const val = getValue(expr, context);
     return val != null ? String(val) : "";
   });
@@ -276,13 +276,13 @@ export async function handleExtractedContent(
   const folderTemplate = isBatch ? plugin.settings.batchNoteFolderPath : plugin.settings.noteFolderPath;
   
   const name = await formatTemplate(plugin, nameTemplate, context);
-  const folder = (await formatTemplate(plugin, folderTemplate, context)).trim();
-  
-  const path = folder ? `${folder}/${name}.md` : `${name}.md`;
+  const folder = normalizePath((await formatTemplate(plugin, folderTemplate, context)).trim());
+
+  const path = normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`);
   
   // Ensure folder exists if specified
   if (folder) {
-    const folderExists = plugin.app.vault.getAbstractFileByPath(folder);
+    const folderExists = plugin.app.vault.getFolderByPath(folder);
     if (!folderExists) {
       try {
         await plugin.app.vault.createFolder(folder);
@@ -298,14 +298,14 @@ export async function handleExtractedContent(
   const appendIfExists = isBatch ? plugin.settings.batchAppendIfExists : plugin.settings.appendIfExists;
   if (file instanceof TFile) {
     if (appendIfExists) {
-      const existing = await plugin.app.vault.read(file);
-      const updatedContent = existing + "\n\n" + finalContent;
-      await plugin.app.vault.modify(file, updatedContent);
+      await plugin.app.vault.append(file, "\n\n" + finalContent);
       const leaf = plugin.app.workspace.getLeaf(true);
       await leaf.openFile(file);
       const activeEditor = plugin.app.workspace.activeEditor?.editor;
       if (activeEditor) {
-        const pos = activeEditor.offsetToPos(updatedContent.length);
+        // Move cursor to end of file after append
+        const fileContent = await plugin.app.vault.read(file);
+        const pos = activeEditor.offsetToPos(fileContent.length);
         activeEditor.setCursor(pos);
         scrollEditorToCursor(activeEditor);
       }
@@ -315,10 +315,10 @@ export async function handleExtractedContent(
       let ext = ".md";
       let counter = 1;
       let uniqueName = `${base}${ext}`;
-      let uniquePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+      let uniquePath = normalizePath(folder ? `${folder}/${uniqueName}` : uniqueName);
       while (plugin.app.vault.getAbstractFileByPath(uniquePath)) {
         uniqueName = `${base} ${counter}${ext}`;
-        uniquePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+        uniquePath = normalizePath(folder ? `${folder}/${uniqueName}` : uniqueName);
         counter++;
       }
       file = await plugin.app.vault.create(uniquePath, finalContent);

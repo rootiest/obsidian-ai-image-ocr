@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { normalizePath, TFile, Vault } from "obsidian";
+import { normalizePath, TFile, Vault, requestUrl } from "obsidian";
 import type { CollectedImage, PreparedImage } from "../types";
 import { pluginLog, pluginLogger } from "./log";
 
@@ -80,35 +80,21 @@ export async function prepareImagePayload(
 }
 
 /**
- * Fetches an external image as an ArrayBuffer, using a CORS proxy if needed.
+ * Fetches an external image as an ArrayBuffer using Obsidian's requestUrl.
  */
 export async function fetchExternalImageAsArrayBuffer(
   url: string
 ): Promise<ArrayBuffer | null> {
   pluginLogger(`Fetching external image ${url}`);
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const buf = await resp.arrayBuffer();
+    const resp = await requestUrl({ url });
+    if (resp.status !== 200 || !resp.arrayBuffer) throw new Error(`HTTP ${resp.status}`);
     pluginLogger(`Fetched image from source ${url}`);
-    return buf;
+    return resp.arrayBuffer;
   } catch (e) {
-    try {
-      const proxyUrl = `https://corsproxy.rootiest.com/proxy?url=${encodeURIComponent(url)}`;
-      const resp = await fetch(proxyUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} from proxy`);
-      const buf = await resp.arrayBuffer();
-      pluginLogger(`Fetched image via proxy for ${url}`);
-      return buf;
-    } catch (e2) {
-      pluginLog(`Failed to fetch image: ${e2}`, "error", true);
-      pluginLog(
-        `Failed to fetch image.`,
-        "notice",
-        true
-      );
-      return null;
-    }
+    pluginLog(`Failed to fetch image: ${e}`, "error", true);
+    pluginLog(`Failed to fetch image.`, "notice", true);
+    return null;
   }
 }
 

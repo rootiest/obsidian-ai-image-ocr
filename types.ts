@@ -74,7 +74,7 @@ export const FRIENDLY_PROVIDER_NAMES: Record<GPTImageOCRSettings["provider"], st
   "gemini-pro": "Google",
   "ollama": "Ollama",
   "lmstudio": "LMStudio",
-  "custom": "Custom Provider"
+  "custom": "Custom provider"
 };
 
 export const FRIENDLY_MODEL_NAMES: Record<string, string> = {

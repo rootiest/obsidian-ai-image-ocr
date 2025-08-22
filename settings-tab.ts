@@ -25,7 +25,6 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "OCR Plugin Settings" });
 
     new Setting(containerEl)
       .setName("Provider")
@@ -134,7 +133,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
 
       // Ollama Model Name
       new Setting(containerEl)
-        .setName("Model Name")
+        .setName("Model name")
         .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
@@ -192,7 +191,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
 
       // LMStudio Model Name
       new Setting(containerEl)
-        .setName("Model Name")
+        .setName("Model name")
         .setDesc("Enter the ID of the vision model to use.")
         .addText(text =>
           text
@@ -238,7 +237,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
         .setDesc("Optional friendly name for your custom OpenAI-compatible provider.")
         .addText(text =>
           text
-            .setPlaceholder("Custom Provider")
+            .setPlaceholder("Custom provider")
             .setValue(this.plugin.settings.customProviderFriendlyName || "")
             .onChange(async (value) => {
               this.plugin.settings.customProviderFriendlyName = value.trim() || undefined;
@@ -302,7 +301,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
     // Add a horizontal rule to separate sections
     containerEl.createEl("hr");
     // Start of single image extraction settings
-    containerEl.createEl("h3", { text: "Single image extraction settings" });
+    containerEl.createEl("h3", { text: "Single image extraction" });
 
     // SINGLE IMAGE CUSTOM PROMPT (full-width textarea below desc)
     const customPromptSetting = new Setting(containerEl)
@@ -418,7 +417,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
     // Add a horizontal rule to separate sections
     containerEl.createEl("hr");
     // Start of batch image extraction settings
-    containerEl.createEl("h3", { text: "Batch image extraction settings" });
+    containerEl.createEl("h3", { text: "Batch image extraction" });
 
     // BATCH CUSTOM PROMPT (full-width textarea below desc)
     const batchCustomPromptSetting = new Setting(containerEl)
