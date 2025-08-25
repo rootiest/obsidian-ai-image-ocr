@@ -141,6 +141,7 @@ for detailed documentation.
 - File/folder naming template creation with `{{placeholder}}` support
 - Use `{{image.image}}` to embed source image in extracted output header/footer
 - Extract from embedded images or via OS-native file/folder pickers
+- Built-in CORS proxy fallback for external images
 
 > [!NOTE]
 > Support for `{{placeholder}}` options is still being tested.
@@ -237,6 +238,12 @@ you may customize the output behavior.
 > When using OpenAI:  
 > You must use a user or service account key (not a `sk-proj` key).
 
+> [!WARNING]
+> CORS security restrictions may prevent the plugin
+> from collecting externally linked images.  
+> A built-in proxy will attempt to fetch the image if direct access fails.  
+> If the proxy fails, you may need to download the image manually.
+
 ---
 
 ## Requirements
@@ -255,7 +262,7 @@ for future releases of the plugin:
 ### Extend Placeholder Support
 
 - Add `created`/`modified` placeholders for images.
-  - Support moment.js formatting of image placeholders.
+  - Support  moment.js formatting of image placeholders.
 - Add other `{{placeholder}}` options.
 
 ### Reverse Placeholder Support
