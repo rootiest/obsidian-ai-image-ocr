@@ -301,7 +301,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
     // Add a horizontal rule to separate sections
     containerEl.createEl("hr");
     // Start of single image extraction settings
-    containerEl.createEl("h3", { text: "Single image extraction" });
+    new Setting(containerEl).setName("Single image extraction").setHeading();
 
     // SINGLE IMAGE CUSTOM PROMPT (full-width textarea below desc)
     const customPromptSetting = new Setting(containerEl)
@@ -417,7 +417,7 @@ export class GPTImageOCRSettingTab extends PluginSettingTab {
     // Add a horizontal rule to separate sections
     containerEl.createEl("hr");
     // Start of batch image extraction settings
-    containerEl.createEl("h3", { text: "Batch image extraction" });
+    new Setting(containerEl).setName("Batch image extraction").setHeading();
 
     // BATCH CUSTOM PROMPT (full-width textarea below desc)
     const batchCustomPromptSetting = new Setting(containerEl)

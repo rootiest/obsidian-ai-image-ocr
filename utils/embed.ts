@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { App, Editor, TFile } from "obsidian";
+import { App, Editor, TFile, moment } from "obsidian";
 
 /**
  * Finds the most relevant image embed in the selected text, or nearest above cursor.
@@ -109,7 +109,7 @@ export function getAttachmentFolderPathForFile(app: App, file: TFile): string {
   // Replace template variables
   let folder = attachmentPath
     .replace(/\{\{filename\}\}/g, file.basename)
-    .replace(/\{\{date\}\}/g, (window as any).moment?.().format("YYYY-MM-DD") ?? "");
+    .replace(/\{\{date\}\}/g, moment().format("YYYY-MM-DD"));
 
   // Remove leading/trailing slashes
   folder = folder.replace(/^\/+|\/+$/g, "");
