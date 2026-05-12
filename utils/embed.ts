@@ -56,8 +56,10 @@ export function findRelevantImageEmbed(editor: Editor): {
 
 /** Resolve an internal image path from a short link to a TFile using MetadataCache */
 export function resolveInternalImagePath(app: App, link: string, sourcePath: string): TFile | undefined {
-  // Use MetadataCache.getFirstLinkpathDest for best match resolution
-  return app.metadataCache.getFirstLinkpathDest(link, sourcePath) || undefined;
+  // Decode URI components (e.g. %20 → space) before resolving — Obsidian embeds
+  // URL-encode paths containing spaces, but getFirstLinkpathDest expects plain filenames.
+  const decoded = decodeURIComponent(link);
+  return app.metadataCache.getFirstLinkpathDest(decoded, sourcePath) || undefined;
 }
 
 export function parseEmbedInfo(embedMarkdown: string, link: string) {
