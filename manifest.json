@@ -1,7 +1,7 @@
 {
   "id": "ai-image-ocr",
   "name": "AI Image OCR",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "minAppVersion": "1.5.7",
   "description": "Extract text from handwritten notes and images using powerful AI Vision models",
   "author": "Rootiest",

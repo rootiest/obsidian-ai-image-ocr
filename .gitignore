@@ -5,3 +5,5 @@ dist/
 main.js
 .vscode/
 debug/
+# AI Session IDs
+.claude_session
