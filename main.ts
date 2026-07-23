@@ -286,11 +286,11 @@ export default class GPTImageOCRPlugin extends Plugin {
 
     const factories: Record<GPTImageOCRSettings["provider"], ProviderFactory> = {
       gemini: () =>
-        new GeminiProvider(geminiApiKey, "models/gemini-2.5-flash", prompt, name),
+        new GeminiProvider(geminiApiKey, "models/gemini-3.6-flash", prompt, name),
       "gemini-lite": () =>
         new GeminiProvider(
           geminiApiKey,
-          "models/gemini-2.5-flash-lite-preview-06-17",
+          "models/gemini-3.5-flash-lite",
           prompt,
           name
         ),
