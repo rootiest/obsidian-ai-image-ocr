@@ -19,7 +19,7 @@ export class GeminiProvider implements OCRProvider {
 
   constructor(
     private apiKey: string,
-    private model: string = "models/gemini-2.5-flash",
+    private model: string = "models/gemini-3.6-flash",
     private prompt: string = DEFAULT_PROMPT_TEXT,
     nameOverride?: string
   ) {

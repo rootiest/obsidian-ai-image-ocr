@@ -67,23 +67,23 @@ for detailed documentation.
 
 ### Google Gemini Models
 
-#### Gemini 2.5 Flash (`gemini-2.5-flash`)
+#### Gemini 3.6 Flash (`gemini-3.6-flash`)
 
-- A fast and efficient model for text extraction
-- Free tier available with generous rate limits — see [Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits#current-rate-limits)
+- Most intelligent Gemini model built for speed, combining frontier intelligence with superior search and grounding
+- Free tier available with generous rate limits
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
-#### Gemini 2.5 Flash-Lite Preview (`gemini-2.5-flash-lite-preview-06-17`)
+#### Gemini 3.5 Flash-Lite (`gemini-3.5-flash-lite`)
 
-- Lightweight version of Gemini Flash
+- Most cost-efficient GA model, optimized for high-volume tasks
 - Free tier with especially generous limits
 - Useful for large volumes of low-latency OCR
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
 #### Gemini 2.5 Pro (`gemini-2.5-pro`)
 
-- Slower but extremely accurate model for OCR
-- Requires paid tier access — see [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
+- State-of-the-art multipurpose model, excels at coding and complex reasoning
+- Free tier available — see [Pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)
 - Requires [Google API key](https://aistudio.google.com/apikey)
 
 ---

@@ -86,8 +86,8 @@ export const FRIENDLY_MODEL_NAMES: Record<string, string> = {
   "llama3.2-vision": "Llama 3.2 Vision",
   "gemma3": "Gemma 3",
   "gemini-2.5-flash": "Gemini Flash 2.5",
-  "models/gemini-2.5-flash": "Gemini Flash 2.5",
-  "models/gemini-2.5-flash-lite-preview-06-17": "Gemini Flash-Lite Preview 06-17",
+  "models/gemini-3.6-flash": "Gemini 3.6 Flash",
+  "models/gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
   "models/gemini-2.5-pro": "Gemini Pro 2.5",
   // Add more as needed
 };
